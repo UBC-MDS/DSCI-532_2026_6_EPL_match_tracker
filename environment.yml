@@ -1,0 +1,10 @@
+name: dsci532
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - jupyter
+  - pandas
+  - seaborn
+  - matplotlib
+prefix: /opt/anaconda3/envs/dsci532
