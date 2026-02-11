@@ -1,0 +1,1 @@
+The EPL Match Tracker is an interactive dashboard designed for data visualization and exploration of English Premier League (EPL) football matches. It enables users to review match outcomes, analyze trends, and uncover insights through visual analytics.
