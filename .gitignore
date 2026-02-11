@@ -1,5 +1,3 @@
-# Ignore raw datasets
-data/raw/
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
@@ -7,3 +5,4 @@ data/raw/
 # Python cache
 __pycache__/
 *.pyc
+.DS_Store
