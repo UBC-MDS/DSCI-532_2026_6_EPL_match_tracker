@@ -23,3 +23,5 @@ As a coach/team analyst, I want to compare win rate and goals scored across earl
 
 ## Section 4: Exploratory Data Analysis
 To evaluate seasonal performance variation, we analyzed win rate, average goals per match, and shot conversion rate across early, mid, and late season periods. While win rate and goals showed minimal variation, shot conversion rate revealed a slight increase in efficiency toward the late season. This supports the user story by demonstrating how performance metrics can be segmented across season phases to assess tactical effectiveness.
+
+![Shot Conversion Rate by Season Period](../img/conversion_rate.png)
