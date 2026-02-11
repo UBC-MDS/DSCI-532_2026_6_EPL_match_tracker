@@ -12,4 +12,5 @@ A coach is reviewing team performance after switching tactics from a defensive a
 
 ### User Stories
 
-(To be added)
+As a coach/team analyst, I want to compare goals scored and shots taken before and after switching from a defensive to an attacking approach so that I can evaluate whether the tactical change improved offensive performance or contributed to a decline in results.
+
