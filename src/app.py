@@ -110,3 +110,5 @@ def server(input, output, session):
         return fig
 
 
+# App instance 
+app = App(app_ui, server)
