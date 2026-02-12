@@ -47,3 +47,38 @@ app_ui = ui.page_fluid(
             ),
         ),
 
+        # RIGHT
+        ui.column(
+            9,
+            ui.div(
+                # KPI row 
+                ui.div(
+                    ui.card(ui.h5("Total Matches"), ui.h2("Value", style="margin:0;"), class_="kpi-card"),
+                        ui.card(ui.h5("Average Win Rate"), ui.h2("Value", style="margin:0;"), class_="kpi-card"),
+                        ui.card(ui.h5("Average Goals Scored"), ui.h2("Value", style="margin:0;"), class_="kpi-card"),
+                        ui.card(ui.h5("Average Goals Conceded"), ui.h2("Value", style="margin:0;"), class_="kpi-card"),
+                        ui.card(ui.h5("Average Shot Conversion Rate"), ui.h2("Value", style="margin:0;"), class_="kpi-card"),
+                    class_="kpi-row"
+                ),
+
+                # Charts area
+                ui.div(
+                    ui.div(
+                        ui.card(ui.h5("Win Rate by Season Period"), ui.output_plot("win_rate_plot")),
+                        ui.card(ui.h5("Shot Conversion Rate by Season Period"), ui.output_plot("conversion_plot")),
+                        class_="top-charts"
+                    ),
+
+                    ui.div(ui.card(ui.h5("Goals Scored vs Goals Conceded Over Time"), ui.output_plot("goals_line_plot")), class_="bottom-chart"),
+
+                    class_="charts-area"
+                ),
+
+                class_="main-content",
+                style="height:100%;"
+            )
+        )
+    ),
+)
+
+
