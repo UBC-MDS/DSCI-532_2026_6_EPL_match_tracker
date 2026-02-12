@@ -29,3 +29,21 @@ page_style = ui.tags.style(
     """
 )
 
+app_ui = ui.page_fluid(
+    page_style,
+
+    ui.row(
+        # LEFT
+        ui.column(
+            3,
+            ui.card(
+                ui.h4("Filters"),
+                ui.input_select("season", "Season", choices=[]),
+                ui.input_select("season_period", "Season Period", choices=["Early", "Mid", "Late"]),
+                ui.input_select("team", "Team", choices=[]),
+                ui.input_radio_buttons("match_phase", "Match Phase", choices=["Full Time", "Half Time"]),
+                ui.input_radio_buttons("match_venue", "Match Venue", choices=["Home", "Away"]),
+                class_="sidebar-card"
+            ),
+        ),
+
