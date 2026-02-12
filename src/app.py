@@ -82,3 +82,31 @@ app_ui = ui.page_fluid(
 )
 
 
+# placeholder plots 
+def server(input, output, session):
+
+    @output
+    @render.plot
+    def win_rate_plot():
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.text(0.5, 0.5, "Win Rate Plot (placeholder)", ha="center", va="center", fontsize=12, color="#666")
+        ax.set_axis_off()
+        return fig
+
+    @output
+    @render.plot
+    def conversion_plot():
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.text(0.5, 0.5, "Conversion Plot (placeholder)", ha="center", va="center", fontsize=12, color="#666")
+        ax.set_axis_off()
+        return fig
+
+    @output
+    @render.plot
+    def goals_line_plot():
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.text(0.5, 0.5, "Goals Line Chart (placeholder)", ha="center", va="center", fontsize=12, color="#666")
+        ax.set_axis_off()
+        return fig
+
+
