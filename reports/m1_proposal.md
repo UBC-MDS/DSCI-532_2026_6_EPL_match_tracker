@@ -185,3 +185,16 @@ This chart compares offensive and defensive output across time or selected group
 * Supports risk–reward tactical evaluation
 
 
+## 5.5 Interaction Workflow
+
+A typical user interaction flow is as follows:
+
+1. The coach opens the dashboard and reviews overall KPIs.
+2. They apply a filter to isolate matches after a tactical shift.
+3. KPI cards update instantly, showing new aggregated metrics.
+4. They compare win rate and conversion efficiency across season phases.
+5. They examine the goals scored vs conceded trend to assess trade-offs.
+6. They optionally apply venue filters to evaluate contextual differences.
+
+This workflow enables structured, evidence-based tactical evaluation.
+
