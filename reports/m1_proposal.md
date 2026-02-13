@@ -126,3 +126,62 @@ The KPI cards function as an executive summary. Coaches can immediately assess:
 * Metrics reflect only the currently selected subset of matches.
 * This enables instant before and after comparisons when evaluating changes.
 
+## 5.3 Filter Panel 
+
+The left sidebar contains interactive dropdown filters that allow users to segment the data by match context.
+
+### Available Filters
+
+* **Season** – Select a specific EPL season
+* **Season Period** – Early, mid or late season segmentation
+* **Team** – Select a specific team
+* **Match Venue** – Home or away matches
+* **Match Phase** – Allows segmentation of matches by contextual grouping (e.g., before vs after tactical shift)
+
+### Design Purpose
+
+The filter panel enables structured performance comparisons across different conditions. This directly supports the user stories by allowing coaches to:
+
+* Compare performance before and after tactical adjustments
+* Evaluate home versus away differences
+* Analyze early, mid, and late season trends
+* Focus on specific seasons for longitudinal analysis
+
+
+## 5.4 Visualization Components
+
+The central panel contains three core visualizations 
+
+### 5.4.1 Win Rate by Season Period (Bar Chart)
+
+This chart displays win rate across early, mid and late season phases.
+
+#### Analytical Purpose
+
+* Identifies performance fluctuations across the season
+* Detects peak performance periods
+* Supports training and tactical planning decisions
+
+
+### 5.4.2 Shot Conversion Rate by Season Period (Bar Chart)
+
+This visualization shows scoring efficiency across season periods.
+
+#### Analytical Purpose
+
+* Evaluates offensive efficiency independent of total shot volume
+* Identifies whether tactical shifts improve shot quality
+* Highlights finishing consistency
+
+
+### 5.4.3 Goals Scored vs. Goals Conceded (Trend Line Chart)
+
+This chart compares offensive and defensive output across time or selected grouping.
+
+#### Analytical Purpose
+
+* Visualizes trade-offs between attacking intensity and defensive stability
+* Identifies whether increased scoring corresponds with increased conceding
+* Supports risk–reward tactical evaluation
+
+
