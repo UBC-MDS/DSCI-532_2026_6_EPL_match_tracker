@@ -97,3 +97,32 @@ The dashboard is designed as an interactive decision-support tool that provides 
 
 This structure ensures that users can first gain a quick understanding of overall team performance and then drill down into specific contexts such as season phase, venue or period.
 
+## 5.2 Landing Page 
+
+When the dashboard loads, it presents an aggregated overview of team performance across the full dataset. This view allows coaches to quickly assess overall effectiveness before applying filters.
+
+### Key Performance Indicators (KPI Cards)
+
+The top section contains five summary metrics:
+
+* **Total Matches** – Total number of matches included in the current selection
+* **Average Win Rate** – Percentage of matches won
+* **Average Goals Scored** – Mean goals scored per match
+* **Average Goals Conceded** – Mean goals allowed per match
+* **Average Shot Conversion Rate** – Percentage of shots converted into goals
+
+#### Design Purpose
+
+The KPI cards function as an executive summary. Coaches can immediately assess:
+
+* Overall performance stability
+* Offensive output
+* Defensive vulnerability
+* Scoring efficiency
+
+#### Interaction Behavior
+
+* All KPI values update dynamically when filters are applied.
+* Metrics reflect only the currently selected subset of matches.
+* This enables instant before and after comparisons when evaluating changes.
+
