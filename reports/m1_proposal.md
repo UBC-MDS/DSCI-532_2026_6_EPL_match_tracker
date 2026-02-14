@@ -77,3 +77,124 @@ As a coach/team analyst, I want to compare win rate and goals scored across earl
 To evaluate seasonal performance variation, we analyzed win rate, average goals per match, and shot conversion rate across early, mid, and late season periods. While win rate and goals showed minimal variation, shot conversion rate revealed a slight increase in efficiency toward the late season. This supports the user story by demonstrating how performance metrics can be segmented across season phases to assess tactical effectiveness.
 
 ![Shot Conversion Rate by Season Period](../img/conversion_rate.png)
+
+
+Below is a project-ready **Section 5** that you can directly integrate into your milestone document.
+
+
+
+# Section 5: Dashboard Interface & Interaction Design
+
+![Sketch](../img/sketch.png)
+
+## 5.1 Overview of the Interface
+
+The dashboard is designed as an interactive decision-support tool that provides both performance summaries and detailed contextual analysis. The layout follows a structured hierarchy:
+
+1. **Top Row:** Key performance indicators (KPIs) for quick assessment
+2. **Left Sidebar:** Interactive filters for contextual segmentation
+3. **Main Panel:** Visualizations for comparative and trend analysis
+
+This structure ensures that users can first gain a quick understanding of overall team performance and then drill down into specific contexts such as season phase, venue or period.
+
+## 5.2 Landing Page 
+
+When the dashboard loads, it presents an aggregated overview of team performance across the full dataset. This view allows coaches to quickly assess overall effectiveness before applying filters.
+
+### Key Performance Indicators (KPI Cards)
+
+The top section contains five summary metrics:
+
+* **Total Matches** – Total number of matches included in the current selection
+* **Average Win Rate** – Percentage of matches won
+* **Average Goals Scored** – Mean goals scored per match
+* **Average Goals Conceded** – Mean goals allowed per match
+* **Average Shot Conversion Rate** – Percentage of shots converted into goals
+
+#### Design Purpose
+
+The KPI cards function as an executive summary. Coaches can immediately assess:
+
+* Overall performance stability
+* Offensive output
+* Defensive vulnerability
+* Scoring efficiency
+
+#### Interaction Behavior
+
+* All KPI values update dynamically when filters are applied.
+* Metrics reflect only the currently selected subset of matches.
+* This enables instant before and after comparisons when evaluating changes.
+
+## 5.3 Filter Panel 
+
+The left sidebar contains interactive dropdown filters that allow users to segment the data by match context.
+
+### Available Filters
+
+* **Season** – Select a specific EPL season
+* **Season Period** – Early, mid or late season segmentation
+* **Team** – Select a specific team
+* **Match Venue** – Home or away matches
+* **Match Phase** – Allows segmentation of matches by contextual grouping (e.g., before vs after tactical shift)
+
+### Design Purpose
+
+The filter panel enables structured performance comparisons across different conditions. This directly supports the user stories by allowing coaches to:
+
+* Compare performance before and after tactical adjustments
+* Evaluate home versus away differences
+* Analyze early, mid, and late season trends
+* Focus on specific seasons for longitudinal analysis
+
+
+## 5.4 Visualization Components
+
+The central panel contains three core visualizations 
+
+### 5.4.1 Win Rate by Season Period (Bar Chart)
+
+This chart displays win rate across early, mid and late season phases.
+
+#### Analytical Purpose
+
+* Identifies performance fluctuations across the season
+* Detects peak performance periods
+* Supports training and tactical planning decisions
+
+
+### 5.4.2 Shot Conversion Rate by Season Period (Bar Chart)
+
+This visualization shows scoring efficiency across season periods.
+
+#### Analytical Purpose
+
+* Evaluates offensive efficiency independent of total shot volume
+* Identifies whether tactical shifts improve shot quality
+* Highlights finishing consistency
+
+
+### 5.4.3 Goals Scored vs. Goals Conceded (Trend Line Chart)
+
+This chart compares offensive and defensive output across time or selected grouping.
+
+#### Analytical Purpose
+
+* Visualizes trade-offs between attacking intensity and defensive stability
+* Identifies whether increased scoring corresponds with increased conceding
+* Supports risk–reward tactical evaluation
+
+
+## 5.5 Interaction Workflow
+
+A typical user interaction flow is as follows:
+
+1. The coach opens the dashboard and reviews overall KPIs.
+2. They apply a filter to isolate matches after a tactical shift.
+3. KPI cards update instantly, showing new aggregated metrics.
+4. They compare win rate and conversion efficiency across season phases.
+5. They examine the goals scored vs conceded trend to assess trade-offs.
+6. They optionally apply venue filters to evaluate contextual differences.
+
+This workflow enables structured, evidence-based tactical evaluation.
+
