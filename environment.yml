@@ -1,10 +1,11 @@
 name: dsci532
 channels:
-  - defaults
+  - conda-forge
 dependencies:
+  - matplotlib
   - python=3.11
   - jupyter
   - pandas
   - seaborn
-  - matplotlib
-prefix: /opt/anaconda3/envs/dsci532
+  - shiny
+prefix: /Users/raymondwang/miniforge3/envs/dsci532
