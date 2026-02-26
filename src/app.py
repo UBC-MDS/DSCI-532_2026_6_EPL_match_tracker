@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # ── Load dataset ───────────────────────────────────────────────────────────────
-df_all = pd.read_csv("data/raw/EPL_final.csv")
+df_all = pd.read_csv("data/raw/epl_final.csv")
 df_all.columns               = df_all.columns.str.strip()
 df_all["Season"]             = df_all["Season"].astype(str).str.strip()
 df_all["HomeTeam"]           = df_all["HomeTeam"].astype(str).str.strip()
