@@ -4,6 +4,13 @@ The EPL Match Tracker is an interactive dashboard developed by DSCI 532 Group 6 
 
 For setup instructions and to run the dashboard locally, please see the [Getting Started](#getting-started) section of this README.
 
+## Deployment
+
+| Build | URL |
+|-------|-----|
+| Stable (main) | https://raymondww-dsci-532-2026-6-epl-match-tracker-stable.share.connect.posit.cloud |
+| Preview (dev)   | https://raymondww-dsci-532-2026-6-epl-match-tracker-preview.share.connect.posit.cloud |
+
 ## Getting Started
 
 *(Instructions for environment setup, dependencies, and dashboard launch will be added in subsequent milestones.)*
