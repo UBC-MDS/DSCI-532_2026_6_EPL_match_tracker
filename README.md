@@ -36,3 +36,32 @@ Select any **team** and **season** to explore three questions:
    Splits the season's matches into Early, Mid, and Late thirds (by date) and plots average goals scored as a line — so you can see at a glance whether the team builds momentum, peaks early, or runs out of steam.
 
 ---
+
+## Getting Started (Contributors)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/UBC-MDS/DSCI-532_2026_6_EPL_match_tracker.git
+cd DSCI-532_2026_6_EPL_match_tracker
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run the app locally
+
+```bash
+shiny run src/app.py
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+
+---
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for our branch workflow, PR process, and code style guidelines.
