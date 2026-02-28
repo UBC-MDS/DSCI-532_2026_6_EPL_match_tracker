@@ -132,7 +132,14 @@ html, body, .container-fluid {
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
 .btn-reset{ padding:6px 10px; font-size:12px; border-radius:6px; background:#f3f4f6; color:#111827; }
 
-
+/* Header banner image (explicit <img>) */
+.header-banner-img{
+    width:100%;
+    height:160px;
+    object-fit:cover;
+    border-radius:12px;
+    display:block;
+}
 
 /* Charts */
 .charts-panel{ flex:1 1 0; display:flex; flex-direction:column; gap:12px; min-width:0; }
