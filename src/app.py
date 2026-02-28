@@ -667,3 +667,8 @@ def server(input, output, session):
             parts.append(ui.span(f"Season: {season}", class_="chip"))
         if res and res != "All":
             parts.append(ui.span(f"Result: {res}", class_="chip"))
+
+
+
+# ── App instance ───────────────────────────────────────────────────────────────
+app = App(app_ui, server)
