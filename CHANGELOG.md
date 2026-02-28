@@ -24,3 +24,15 @@
   - Footer rewritten to show repository link, authors and `Last updated` date.
   - Color palette and chart styling updated for accessibility (colorblind-friendly choices).
 
+### Fixed
+- Restored and corrected helper implementations that were incomplete or corrupted during iterative development: `hero_header()` (header rendering and fallback logic) and `assign_period()` (period assignment by sorted match date).
+- Addressed multiple CSS/JS syntax issues preventing render in earlier interim edits.
+
+### Files added vs v0.1.0
+- Added: `CHANGELOG.md`, `reports/m2_spec.md`, `img/stadium.jpg`, `src/www/stadium.jpg`, `src/www/stadium.svg`, `www/stadium.jpg`, `www/stadium.svg`, `img/demo.mp4`.
+- Modified: `src/app.py` (major rewrite from v0.1 placeholder); `img/sketch.png` and `img/conversion_rate.png` remain unchanged, `README.md` updated to include the embedded demo and contributor instructions.
+
+### Known Issues
+- Charts are rendered using Matplotlib (static PNGs). Interactive exploration (hover/zoom) is not yet available.
+- Some card/table heights use fixed pixel heights (320px) and may require responsive improvements for small viewports.
+
