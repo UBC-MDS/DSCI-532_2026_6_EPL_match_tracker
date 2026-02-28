@@ -27,3 +27,61 @@
 | `out_winrate_home_away` | Output | `@render.plot` | `summary_home_away` | #2 |
 | `out_goals_by_period` | Output | `@render.plot` | `summary_period` | #3 |
 | `out_matches_table` | Output | `@render.data_frame` | `matches_filtered` | #1, #2, #3 |
+
+## Complexity Enhancement
+
+To improve robustness and user experience we implemented a server-side reset flow using Shiny's reactivity primitives:
+
+- Added a `@reactive.event(input.btn_reset)` reactive (`_reset_event`) which is triggered exactly once per reset button click.
+- Added a `@reactive.effect` (`_do_reset`) that depends on `_reset_event` and performs the side-effect of restoring canonical defaults (`input_team` → `Arsenal`, `input_season` → `2000/01`, `input_result` → `All`) via `session.set_input_value`.
+
+Why this improves UX:
+- Single-run calculation: `@reactive.event` ensures a single trigger per click, avoiding repeated recalculation across multiple outputs and making resets efficient.
+- Centralized side-effect: the `@reactive.effect` performs all input restores in one place, guaranteeing that all widgets are reset together and that downstream reactives recompute from the same canonical state.
+- Deterministic behavior: server-side reset avoids timing issues or race conditions that can occur when resetting many widgets via client-side JS alone, ensuring KPIs, charts and tables update reliably after a reset.
+
+Implementation note: the server uses `session.set_input_value(...)` to programmatically set inputs; this approach integrates with Shiny's reactive engine so each input change triggers reactives exactly once and feeds all dependent outputs.
+## 2.3 Reactive Diagram
+```mermaid
+flowchart TD
+  %% EPL Dashboard Reactivity Graph
+  A[/input_team/] --> F{{matches_filtered}}
+  B[/input_season/] --> F
+
+  F --> S1{{summary_home_away}}
+  F --> S2{{summary_period}}
+
+  F --> K1([out_kpi_total])
+  F --> K2([out_kpi_winrate])
+  F --> K3([out_kpi_goals_scored])
+  F --> K4([out_kpi_goals_conceded])
+  F --> T1([out_matches_table])
+
+  S1 --> P1([out_goals_home_away])
+  S1 --> P2([out_winrate_home_away])
+
+  S2 --> P3([out_goals_by_period])
+```
+## 2.4 Calculation Details
+
+### matches_filtered
+- **Depends on:** `input_team`, `input_season`
+- **What it does:** Filters the full match dataset to only include matches where the selected team participated in the selected season (either as HomeTeam or AwayTeam).
+- **Used by:** `summary_home_away`, `summary_period`, all KPI outputs, and the matches table.
+
+---
+
+### summary_home_away
+- **Depends on:** `matches_filtered`
+- **What it does:** Aggregates filtered matches to compute Home vs Away metrics from the selected team's perspective, including:
+  - average goals scored  
+  - average goals conceded  
+  - win rate  
+- **Used by:** `out_goals_home_away`, `out_winrate_home_away`
+
+---
+
+### summary_period
+- **Depends on:** `matches_filtered`
+- **What it does:** Sorts matches by MatchDate and splits them into Early, Mid, and Late season periods (equal-sized groups), then computes average goals scored per period.
+- **Used by:** `out_goals_by_period`
