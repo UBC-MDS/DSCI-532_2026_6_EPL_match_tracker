@@ -14,3 +14,6 @@ For setup instructions and to run the dashboard locally, please see the [Getting
 ## Getting Started
 
 *(Instructions for environment setup, dependencies, and dashboard launch will be added in subsequent milestones.)*
+
+## Demo
+![Demo](img/demo.gif)
