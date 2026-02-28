@@ -20,6 +20,9 @@ df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
 
+# Date defaults for date-range filter
+DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
+DEFAULT_DATE_END = df_all["MatchDate"].max().date().isoformat()
 
 
 # Load a local JPEG as a data-URI so the header doesn't rely on static file serving.
@@ -41,8 +44,7 @@ def _load_header_datauri():
 
 INLINE_HEADER_DATAURI = _load_header_datauri()
 
-# last updated date for footer
-LAST_UPDATED = datetime.date.today().isoformat()
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
