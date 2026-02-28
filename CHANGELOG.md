@@ -15,3 +15,12 @@
   - `img/stadium.jpg` — header artwork (added/optimized).
   - `src/www/stadium.jpg` and `src/www/stadium.svg` plus top-level `www/` copies — static asset fallbacks for deployments that serve `/www/`.
 
+### Changed
+- `src/app.py` reworked from a placeholder layout (v0.1) to a working Shiny app with data-driven reactives and renderers. Major behavioral changes include:
+  - Replaced placeholder plots and many static placeholders with real data-driven plots and tables.
+  - Replaced the originally-proposed date-range input (removed) with a `Match result` filter to align with the M2 decision and keep the UI robust for small-season subsamples.
+  - KPI wording unified ("Average" used instead of "Avg").
+  - Layout updated: KPIs placed above charts in a responsive card row; top charts are two side-by-side cards and the bottom row pairs the period line chart with the matches table.
+  - Footer rewritten to show repository link, authors and `Last updated` date.
+  - Color palette and chart styling updated for accessibility (colorblind-friendly choices).
+
