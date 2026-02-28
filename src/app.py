@@ -49,13 +49,13 @@ def assign_period(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ── Colours ────────────────────────────────────────────────────────────────────
-C_HOME          = "#4e79a7"
-C_AWAY          = "#e15759"
-C_GOALS_FOR     = "#59a14f"
-C_GOALS_AGAINST = "#e15759"
-C_EARLY         = "#4e79a7"
-C_MID           = "#f28e2b"
-C_LATE          = "#59a14f"
+C_HOME          = "#1f77b4"  
+C_AWAY          = "#ff7f0e"  
+C_GOALS_FOR     = "#2ca02c"  
+C_GOALS_AGAINST = "#d62728"  
+C_EARLY         = "#9467bd"  
+C_MID           = "#8c564b"  
+C_LATE          = "#e377c2"  
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
 page_style = ui.tags.style("""
