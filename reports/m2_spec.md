@@ -28,6 +28,19 @@
 | `out_goals_by_period` | Output | `@render.plot` | `summary_period` | #3 |
 | `out_matches_table` | Output | `@render.data_frame` | `matches_filtered` | #1, #2, #3 |
 
+## Complexity Enhancement
+
+To improve robustness and user experience we implemented a server-side reset flow using Shiny's reactivity primitives:
+
+- Added a `@reactive.event(input.btn_reset)` reactive (`_reset_event`) which is triggered exactly once per reset button click.
+- Added a `@reactive.effect` (`_do_reset`) that depends on `_reset_event` and performs the side-effect of restoring canonical defaults (`input_team` → `Arsenal`, `input_season` → `2000/01`, `input_result` → `All`) via `session.set_input_value`.
+
+Why this improves UX:
+- Single-run calculation: `@reactive.event` ensures a single trigger per click, avoiding repeated recalculation across multiple outputs and making resets efficient.
+- Centralized side-effect: the `@reactive.effect` performs all input restores in one place, guaranteeing that all widgets are reset together and that downstream reactives recompute from the same canonical state.
+- Deterministic behavior: server-side reset avoids timing issues or race conditions that can occur when resetting many widgets via client-side JS alone, ensuring KPIs, charts and tables update reliably after a reset.
+
+Implementation note: the server uses `session.set_input_value(...)` to programmatically set inputs; this approach integrates with Shiny's reactive engine so each input change triggers reactives exactly once and feeds all dependent outputs.
 ## 2.3 Reactive Diagram
 ```mermaid
 flowchart TD

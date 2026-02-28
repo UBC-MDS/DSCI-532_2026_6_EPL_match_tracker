@@ -1,6 +1,10 @@
 from shiny import App, ui, render, reactive
 import matplotlib.pyplot as plt
 import pandas as pd
+import json
+import os
+import base64
+import datetime
 
 # ── Load dataset ───────────────────────────────────────────────────────────────
 df_all = pd.read_csv("data/raw/epl_final.csv")
@@ -15,6 +19,33 @@ df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
 
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
+
+# Date defaults for date-range filter
+DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
+DEFAULT_DATE_END = df_all["MatchDate"].max().date().isoformat()
+
+
+# Load a local JPEG as a data-URI so the header doesn't rely on static file serving.
+def _load_header_datauri():
+    candidates = [
+        os.path.join("img", "stadium.jpg"),
+        os.path.join("src", "www", "stadium.jpg"),
+        os.path.join("www", "stadium.jpg"),
+    ]
+    for p in candidates:
+        try:
+            with open(p, "rb") as fh:
+                b = fh.read()
+            b64 = base64.b64encode(b).decode("ascii")
+            return f"data:image/jpeg;base64,{b64}"
+        except Exception:
+            continue
+    return None
+
+INLINE_HEADER_DATAURI = _load_header_datauri()
+
+# last updated date for footer
+LAST_UPDATED = datetime.date.today().isoformat()
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
@@ -49,18 +80,21 @@ def assign_period(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ── Colours ────────────────────────────────────────────────────────────────────
-C_HOME          = "#4e79a7"
+C_HOME          = "#472A4B"
 C_AWAY          = "#e15759"
-C_GOALS_FOR     = "#59a14f"
+C_GOALS_FOR     = "#472A4B"
 C_GOALS_AGAINST = "#e15759"
-C_EARLY         = "#4e79a7"
-C_MID           = "#f28e2b"
-C_LATE          = "#59a14f"
+C_EARLY         = "#472A4B"
+C_MID           = "#e15759"
+C_LATE          = "#4e79a7"
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
 page_style = ui.tags.style("""
 html, body, .container-fluid {
-    height: 100%; margin: 0; padding: 0; background: #f4f6f9;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #f4f6f9;
 }
 
 .dashboard-wrap {
@@ -72,7 +106,7 @@ html, body, .container-fluid {
     overflow-y: auto;
 }
 
-/* ── KPI row ── */
+/* KPI row */
 .kpi-row {
     display: flex;
     gap: 12px;
@@ -82,147 +116,90 @@ html, body, .container-fluid {
     flex: 1 1 0;
     background: #fff;
     border-radius: 10px;
-    border: 1px solid #e0e4ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    padding: 12px 16px;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 4px 20px rgba(16,24,40,0.06);
+    padding: 16px;
 }
-.kpi-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: #6b7280;
-    margin-bottom: 6px;
-}
-.kpi-value {
-    font-size: 22px;
-    font-weight: 700;
-    color: #111827;
-    line-height: 1;
+.kpi-label { font-size: 10px; font-weight:700; text-transform:uppercase; color:#6b7280; margin-bottom:6px; }
+.kpi-value { font-size: 22px; font-weight:700; color:#111827; }
+.kpi-compare { font-size:12px; color:#6b7280; margin-top:6px; display:block; }
+
+/* Body and sidebar */
+.body-row { display:flex; gap:14px; align-items:stretch; }
+.sidebar { width:220px; flex-shrink:0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px; display:flex; flex-direction:column; gap:12px; align-self:stretch; }
+.sidebar-title{ font-size:14px; font-weight:700; color:#111827; }
+.sidebar label{ font-size:12px; font-weight:600; color:#374151; }
+.sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
+.btn-reset{ padding:6px 10px; font-size:12px; border-radius:6px; background:#f3f4f6; color:#111827; }
+
+/* Header banner image (explicit <img>) */
+.header-banner-img{
+    width:100%;
+    height:160px;
+    object-fit:cover;
+    border-radius:12px;
+    display:block;
 }
 
-/* ── Body row ── */
-.body-row {
-    display: flex;
-    gap: 14px;
-}
+/* Charts */
+.charts-panel{ flex:1 1 0; display:flex; flex-direction:column; gap:12px; min-width:0; }
+.kpi-row { margin-bottom:12px; }
+.chart-row-top{ display:flex; gap:12px; }
+.chart-card{ flex:1 1 0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:12px 14px 8px; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.chart-row-bottom{ display:flex; gap:12px; }
+.chart-row-bottom > * { flex: 0 0 50%; min-width:0; height:320px; }
+.chart-title{ font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+.chart-subtitle{ font-size:10px; color:#9ca3af; margin-bottom:8px; }
 
-/* ── Sidebar ── */
-.sidebar {
-    width: 200px;
-    flex-shrink: 0;
-    background: #fff;
-    border-radius: 10px;
-    border: 1px solid #e0e4ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    padding: 16px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    box-sizing: border-box;
-}
-.sidebar-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 2px;
-}
-.sidebar label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-}
-.sidebar .form-select {
-    font-size: 12px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-}
+/* Table card */
+.table-card{ background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:10px 14px; height:320px; overflow-y:auto; display:flex; flex-direction:column; }
 
-/* ── Charts panel ── */
-.charts-panel {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-}
+/* Active filters chips */
+.active-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.active-filters .chip { background: #eef2ff; color:#3730a3; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
 
-.chart-row-top {
-    display: flex;
-    gap: 12px;
-}
+/* Footer */
+.app-footer{ margin-top:8px; padding:10px 16px; text-align:left; color:#6b7280; font-size:13px; display:flex; gap:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.app-footer p{ margin:0; }
 
-.chart-row-bottom {
-    display: flex;
-}
-
-.chart-card {
-    flex: 1 1 0;
-    background: #fff;
-    border-radius: 10px;
-    border: 1px solid #e0e4ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    padding: 12px 14px 8px;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow: hidden;
-}
-.chart-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: #374151;
-    margin-bottom: 2px;
-    flex-shrink: 0;
-}
-.chart-subtitle {
-    font-size: 10px;
-    color: #9ca3af;
-    margin-bottom: 6px;
-    flex-shrink: 0;
-}
-
-/* ── Table card ── */
-.table-card {
-    background: #fff;
-    border-radius: 10px;
-    border: 1px solid #e0e4ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    padding: 10px 14px;
-    max-height: 200px;
-    overflow-y: auto;
-}
 """)
+
+# ── Hero Header with Local Stadium Background ─────────────────────
+def hero_header():
+    # prefer inline data-uri when available, otherwise fall back to static path
+    img_src = INLINE_HEADER_DATAURI if INLINE_HEADER_DATAURI else "/www/stadium.jpg"
+    return ui.div(
+        ui.img(src=img_src, class_="header-banner-img", alt="Stadium"),
+        ui.div(
+            ui.img(
+                src="https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg",
+                style="height:65px; margin-right:20px;",
+            ),
+            ui.h2(
+                "EPL Performance Dashboard",
+                style="margin:0; font-weight:800; color:white; font-size:42px; line-height:1;"
+            ),
+            style="""
+                position:absolute;
+                left:30px;
+                top:50%;
+                transform:translateY(-50%);
+                display:flex;
+                align-items:center;
+                gap:20px;
+                z-index:2;
+            """,
+        ),
+        style="position:relative; margin-bottom:20px;",
+    )
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
 app_ui = ui.page_fluid(
     page_style,
+    hero_header(),
     ui.div(
 
-        # ── KPI row ───────────────────────────────────────────────────────────
-        ui.div(
-            ui.div(
-                ui.div("Total Matches",      class_="kpi-label"),
-                ui.div(ui.output_ui("out_kpi_total"),          class_="kpi-value"),
-                class_="kpi-card",
-            ),
-            ui.div(
-                ui.div("Win Rate",           class_="kpi-label"),
-                ui.div(ui.output_ui("out_kpi_winrate"),        class_="kpi-value"),
-                class_="kpi-card",
-            ),
-            ui.div(
-                ui.div("Avg Goals Scored",   class_="kpi-label"),
-                ui.div(ui.output_ui("out_kpi_goals_scored"),   class_="kpi-value"),
-                class_="kpi-card",
-            ),
-            ui.div(
-                ui.div("Avg Goals Conceded", class_="kpi-label"),
-                ui.div(ui.output_ui("out_kpi_goals_conceded"), class_="kpi-value"),
-                class_="kpi-card",
-            ),
-            class_="kpi-row",
-        ),
+        
 
         # ── Body row ──────────────────────────────────────────────────────────
         ui.div(
@@ -230,13 +207,40 @@ app_ui = ui.page_fluid(
             # Sidebar
             ui.div(
                 ui.div("⚽ Filters", class_="sidebar-title"),
-                ui.input_select("input_team",   "Team",   choices=ALL_TEAMS),
-                ui.input_select("input_season", "Season", choices=ALL_SEASONS),
+                ui.input_select("input_team",   "Team",   choices=ALL_TEAMS, selected="Arsenal"),
+                ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected="2000/01"),
+                ui.input_select("input_result", "Match result", choices=["All","Win","Draw","Loss"], selected="All"),
+                    ui.output_ui("out_active_filters"),
+                    ui.input_action_button("btn_reset", "Reset filters", class_="btn-reset"),
                 class_="sidebar",
             ),
 
             # Charts panel
             ui.div(
+                # main content: KPI row + charts
+                ui.div(
+                    ui.div(
+                        ui.div("Total Matches",      class_="kpi-label"),
+                        ui.div(ui.output_ui("out_kpi_total"),          class_="kpi-value"),
+                        class_="kpi-card",
+                    ),
+                    ui.div(
+                        ui.div("Win Rate",           class_="kpi-label"),
+                        ui.div(ui.output_ui("out_kpi_winrate"),        class_="kpi-value"),
+                        class_="kpi-card",
+                    ),
+                    ui.div(
+                        ui.div("Average Goals Scored",   class_="kpi-label"),
+                        ui.div(ui.output_ui("out_kpi_goals_scored"),   class_="kpi-value"),
+                        class_="kpi-card",
+                    ),
+                    ui.div(
+                        ui.div("Average Goals Conceded", class_="kpi-label"),
+                        ui.div(ui.output_ui("out_kpi_goals_conceded"), class_="kpi-value"),
+                        class_="kpi-card",
+                    ),
+                    class_="kpi-row",
+                ),
 
                 # Row 1: Story 1 + Story 2 side by side
                 ui.div(
@@ -255,21 +259,21 @@ app_ui = ui.page_fluid(
                     class_="chart-row-top",
                 ),
 
-                # Row 2: Story 3 full width
+                # Row 2: small line chart + match table side-by-side
                 ui.div(
                     ui.div(
-                        ui.div("Avg Goals Scored by Season Period", class_="chart-title"),
+                        ui.div("Average Goals Scored by Season Period", class_="chart-title"),
                         ui.div("Early / Mid / Late · Story 3",      class_="chart-subtitle"),
-                        ui.output_plot("out_goals_by_period", height="220px"),
+                        ui.output_plot("out_goals_by_period", height="320px"),
                         class_="chart-card",
                     ),
+                    ui.div(
+                        ui.div("Match Details", class_="chart-title"),
+                        ui.div("Filtered match list", class_="chart-subtitle"),
+                        ui.output_data_frame("out_matches_table"),
+                        class_="table-card",
+                    ),
                     class_="chart-row-bottom",
-                ),
-
-                # Row 3: Match table
-                ui.div(
-                    ui.output_data_frame("out_matches_table"),
-                    class_="table-card",
                 ),
 
                 class_="charts-panel",
@@ -280,6 +284,46 @@ app_ui = ui.page_fluid(
 
         class_="dashboard-wrap",
     ),
+    # Footer
+    ui.div(
+        ui.div(
+            ui.p("EPL Performance Dashboard : Interactive exploration of team results."),
+            ui.p(["Authors: Omowunmi, Wenrui, Gurleen. ", ui.a("Repo", href="https://github.com/UBC-MDS/DSCI-532_2026_6_EPL_match_tracker", target="_blank")]),
+            ui.p(f"Last updated: {LAST_UPDATED}"),
+            class_="app-footer",
+        ),
+    ),
+    ui.tags.script(f"""
+document.addEventListener('DOMContentLoaded', function(){{
+    const btn = document.getElementById('btn_reset');
+    if (!btn) return;
+
+    btn.addEventListener('click', function() {{
+        // prevent double-clicks while resetting
+        btn.disabled = true;
+
+        // set primary inputs first (team, season) as event-priority updates
+        Shiny.setInputValue('input_team', 'Arsenal', {{priority: 'event'}});
+        Shiny.setInputValue('input_season', '2000/01', {{priority: 'event'}});
+
+        // also update visible select elements immediately if present
+        const selTeam = document.getElementById('input_team');
+        if (selTeam) {{ selTeam.value = 'Arsenal'; selTeam.dispatchEvent(new Event('input')); selTeam.dispatchEvent(new Event('change')); }}
+        const selSeason = document.getElementById('input_season');
+        if (selSeason) {{ selSeason.value = '2000/01'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
+
+        // set match-result after a short delay so the server sees team/season first
+        setTimeout(function() {{
+            Shiny.setInputValue('input_result', 'All', {{priority: 'event'}});
+            // also update the visible select element value if present
+            const sel = document.getElementById('input_result');
+            if (sel) {{ sel.value = 'All'; sel.dispatchEvent(new Event('input')); sel.dispatchEvent(new Event('change')); }}
+            // re-enable the button after another short delay
+            setTimeout(function(){{ btn.disabled = false; }}, 200);
+        }}, 250);
+    }});
+}});
+"""),
 )
 
 
@@ -289,8 +333,21 @@ def server(input, output, session):
     # ── matches_filtered ──────────────────────────────────────────────────────
     @reactive.calc
     def matches_filtered():
-        df = df_all[df_all["Season"] == input.input_season()]
-        return get_team_matches(df, input.input_team())
+        df = df_all[df_all["Season"] == input.input_season()].copy()
+        mf = get_team_matches(df, input.input_team())
+        # apply match-result filter if provided
+        try:
+            res = input.input_result()
+        except Exception:
+            res = None
+        if res and res != "All":
+            if res == "Win":
+                mf = mf[mf["win"] == 1]
+            elif res == "Draw":
+                mf = mf[mf["FullTimeResult"] == "D"]
+            elif res == "Loss":
+                mf = mf[(mf["win"] == 0) & (mf["FullTimeResult"] != "D")]
+        return mf
 
     # ── summary_home_away ─────────────────────────────────────────────────────
     @reactive.calc
@@ -309,6 +366,43 @@ def server(input, output, session):
                     n                 = len(sub),
                 )
         return out
+
+    def _metrics_for_season(season: str):
+        df = df_all[df_all["Season"] == season]
+        mf = get_team_matches(df, input.input_team())
+        if mf.empty:
+            return dict(n=0, win_rate=0.0, avg_goals_for=0.0, avg_goals_against=0.0)
+        return dict(
+            n = len(mf),
+            win_rate = mf["win"].mean() * 100,
+            avg_goals_for = mf["goals_for"].mean(),
+            avg_goals_against = mf["goals_against"].mean(),
+        )
+
+    def _pct_change(curr, prev, abs_unit: str = ""):
+        # returns a small UI span showing ▲/▼ percent change and absolute difference
+        if prev == 0 or prev is None:
+            return None
+        try:
+            change = (curr - prev) / prev * 100
+        except Exception:
+            return None
+        arrow = "▲" if change > 0 else ("▼" if change < 0 else "—")
+        sign = f"{abs(change):.1f}%"
+        abs_diff = curr - prev
+        # format absolute diff: integer for matches, one decimal otherwise
+        if abs_unit.strip().startswith("matches") or abs_unit.strip().lower().startswith("match"):
+            abs_fmt = f"{int(abs_diff):+d} {abs_unit.strip()}"
+        else:
+            abs_fmt = f"{abs_diff:+.1f} {abs_unit.strip()}" if abs_unit else f"{abs_diff:+.1f}"
+        col = "#16a34a" if change > 0 else ("#ef4444" if change < 0 else "#6b7280")
+        return ui.span(
+            ui.span(f"{arrow} {sign}", style=f"color: {col}; font-weight:700; margin-right:6px;"),
+            ui.span(f"({abs_fmt})", style="color:#6b7280; margin-right:4px;"),
+            ui.span("vs previous season", style="color:#6b7280;"),
+            class_="kpi-compare",
+            style="margin-left:6px;",
+        )
 
     # ── summary_period ────────────────────────────────────────────────────────
     @reactive.calc
@@ -330,25 +424,82 @@ def server(input, output, session):
     @output
     @render.ui
     def out_kpi_total():
-        return str(len(matches_filtered()))
+        season = input.input_season()
+        curr = _metrics_for_season(season)["n"]
+        prev = None
+        try:
+            idx = ALL_SEASONS.index(season)
+            if idx > 0:
+                prev = ALL_SEASONS[idx - 1]
+        except Exception:
+            prev = None
+        prev_n = _metrics_for_season(prev)["n"] if prev else 0
+        comp = _pct_change(curr, prev_n)
+        comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
+        return ui.div(
+            ui.div(f"{curr}", style="font-size:22px; font-weight:700;"),
+            comp_ui,
+        )
 
     @output
     @render.ui
     def out_kpi_winrate():
-        mf = matches_filtered()
-        return "—" if mf.empty else f"{mf['win'].mean()*100:.1f}%"
+        season = input.input_season()
+        curr = _metrics_for_season(season)["win_rate"]
+        prev = None
+        try:
+            idx = ALL_SEASONS.index(season)
+            if idx > 0:
+                prev = ALL_SEASONS[idx - 1]
+        except Exception:
+            prev = None
+        prev_val = _metrics_for_season(prev)["win_rate"] if prev else 0.0
+        comp = _pct_change(curr, prev_val)
+        comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
+        return ui.div(
+            ui.div(f"{curr:.1f}%", style="font-size:22px; font-weight:700;"),
+            comp_ui,
+        )
 
     @output
     @render.ui
     def out_kpi_goals_scored():
-        mf = matches_filtered()
-        return "—" if mf.empty else f"{mf['goals_for'].mean():.2f}"
+        season = input.input_season()
+        curr = _metrics_for_season(season)["avg_goals_for"]
+        prev = None
+        try:
+            idx = ALL_SEASONS.index(season)
+            if idx > 0:
+                prev = ALL_SEASONS[idx - 1]
+        except Exception:
+            prev = None
+        prev_val = _metrics_for_season(prev)["avg_goals_for"] if prev else 0.0
+        comp = _pct_change(curr, prev_val)
+        comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
+        return ui.div(
+            ui.div(f"{curr:.2f}", style="font-size:22px; font-weight:700;"),
+            comp_ui,
+        )
 
     @output
     @render.ui
     def out_kpi_goals_conceded():
-        mf = matches_filtered()
-        return "—" if mf.empty else f"{mf['goals_against'].mean():.2f}"
+        season = input.input_season()
+        curr = _metrics_for_season(season)["avg_goals_against"]
+        prev = None
+        try:
+            idx = ALL_SEASONS.index(season)
+            if idx > 0:
+                prev = ALL_SEASONS[idx - 1]
+        except Exception:
+            prev = None
+        prev_val = _metrics_for_season(prev)["avg_goals_against"] if prev else 0.0
+        comp = _pct_change(curr, prev_val)
+        comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
+        return ui.div(
+            ui.div(f"{curr:.2f}", style="font-size:22px; font-weight:700;"),
+            comp_ui,
+        )
 
     # ── Shared helpers ────────────────────────────────────────────────────────
     def _style_ax(ax):
@@ -490,6 +641,35 @@ def server(input, output, session):
             "period":            "Period",
         })
         return render.DataGrid(display, width="100%")
+
+
+    # ── Active filters display ─────────────────────────────────────────────
+    @output
+    @render.ui
+    def out_active_filters():
+        parts = []
+        try:
+            team = input.input_team()
+        except Exception:
+            team = None
+        try:
+            season = input.input_season()
+        except Exception:
+            season = None
+        try:
+            res = input.input_result()
+        except Exception:
+            res = None
+
+        if team:
+            parts.append(ui.span(f"Team: {team}", class_="chip"))
+        if season:
+            parts.append(ui.span(f"Season: {season}", class_="chip"))
+        if res and res != "All":
+            parts.append(ui.span(f"Result: {res}", class_="chip"))
+        if not parts:
+            return ui.div(ui.span("No active filters", style="color:#9ca3af; font-size:12px;"))
+        return ui.div(*parts, class_="active-filters")
 
 
 # ── App instance ───────────────────────────────────────────────────────────────
