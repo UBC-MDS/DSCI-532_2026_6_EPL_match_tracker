@@ -31,6 +31,7 @@
 ## 2.3 Reactive Diagram
 ```mermaid
 flowchart TD
+  %% EPL Dashboard Reactivity Graph
   A[/input_team/] --> F{{matches_filtered}}
   B[/input_season/] --> F
 
@@ -47,3 +48,5 @@ flowchart TD
   S1 --> P2([out_winrate_home_away])
 
   S2 --> P3([out_goals_by_period])
+  ````
+  
