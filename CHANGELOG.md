@@ -36,3 +36,23 @@
 - Charts are rendered using Matplotlib (static PNGs). Interactive exploration (hover/zoom) is not yet available.
 - Some card/table heights use fixed pixel heights (320px) and may require responsive improvements for small viewports.
 
+---
+
+## Reflection (M2 job stories)
+
+Mapped to M2 job stories from `reports/m2_spec.md`:
+
+- Story 1 (Home vs Away goals): Implemented — a grouped bar chart compares average goals scored vs conceded for Home and Away, driven by `input_team` and `input_season`.
+- Story 2 (Home vs Away win rate): Implemented — a focused bar chart shows win rate (%) at Home and Away for the selected team/season.
+- Story 3 (Early/Mid/Late period trend): Implemented — matches for the selected team+season are sorted by date and split evenly into Early, Mid, Late groups; a single-axis line chart shows average goals scored across those periods.
+
+- Partially implemented / next steps for M3:
+  - Convert Matplotlib charts to an interactive plotting library (Plotly or Altair) to enable tooltips, brushing and zoom.
+  - Improve responsive sizing to remove fixed heights and ensure equal-height columns across viewports.
+  - Finalize static asset strategy (serve from `www/` at project root) and clean up duplicate asset copies once deployment approach is confirmed.
+
+
+### How this compares to v0.1.0
+
+v0.1.0 contained a lightweight UI skeleton in `src/app.py` with placeholder plots and static KPI placeholders. The 0.2.0 release transforms that scaffold into a functional, data-driven dashboard implementing the M2 job stories, adds the milestone specification document, and includes robust header-image fallbacks and small asset optimizations.
+
