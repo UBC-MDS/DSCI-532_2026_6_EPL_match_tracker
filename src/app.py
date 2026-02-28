@@ -667,8 +667,3 @@ def server(input, output, session):
             parts.append(ui.span(f"Season: {season}", class_="chip"))
         if res and res != "All":
             parts.append(ui.span(f"Result: {res}", class_="chip"))
-        if not parts:
-            return ui.div(ui.span("No active filters", style="color:#9ca3af; font-size:12px;"))
-        return ui.div(*parts, class_="active-filters")
-
-
