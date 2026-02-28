@@ -27,3 +27,23 @@
 | `out_winrate_home_away` | Output | `@render.plot` | `summary_home_away` | #2 |
 | `out_goals_by_period` | Output | `@render.plot` | `summary_period` | #3 |
 | `out_matches_table` | Output | `@render.data_frame` | `matches_filtered` | #1, #2, #3 |
+
+## 2.3 Reactive Diagram
+```mermaid
+flowchart TD
+  A[/input_team/] --> F{{matches_filtered}}
+  B[/input_season/] --> F
+
+  F --> S1{{summary_home_away}}
+  F --> S2{{summary_period}}
+
+  F --> K1([out_kpi_total])
+  F --> K2([out_kpi_winrate])
+  F --> K3([out_kpi_goals_scored])
+  F --> K4([out_kpi_goals_conceded])
+  F --> T1([out_matches_table])
+
+  S1 --> P1([out_goals_home_away])
+  S1 --> P2([out_winrate_home_away])
+
+  S2 --> P3([out_goals_by_period])
