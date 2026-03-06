@@ -19,6 +19,7 @@ df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
 
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
+DEFAULT_SEASON = ALL_SEASONS[-1] 
 
 # Date defaults for date-range filter
 DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
@@ -208,7 +209,7 @@ app_ui = ui.page_fluid(
             ui.div(
                 ui.div("⚽ Filters", class_="sidebar-title"),
                 ui.input_select("input_team",   "Team",   choices=ALL_TEAMS, selected="Arsenal"),
-                ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected="2000/01"),
+                ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected=DEFAULT_SEASON),
                 ui.input_select("input_result", "Match result", choices=["All","Win","Draw","Loss"], selected="All"),
                     ui.output_ui("out_active_filters"),
                     ui.input_action_button("btn_reset", "Reset filters", class_="btn-reset"),
@@ -304,13 +305,13 @@ document.addEventListener('DOMContentLoaded', function(){{
 
         // set primary inputs first (team, season) as event-priority updates
         Shiny.setInputValue('input_team', 'Arsenal', {{priority: 'event'}});
-        Shiny.setInputValue('input_season', '2000/01', {{priority: 'event'}});
+        Shiny.setInputValue('input_season', '{DEFAULT_SEASON}', {{priority: 'event'}});
 
         // also update visible select elements immediately if present
         const selTeam = document.getElementById('input_team');
         if (selTeam) {{ selTeam.value = 'Arsenal'; selTeam.dispatchEvent(new Event('input')); selTeam.dispatchEvent(new Event('change')); }}
         const selSeason = document.getElementById('input_season');
-        if (selSeason) {{ selSeason.value = '2000/01'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
+        if (selSeason) {{ selSeason.value = '{DEFAULT_SEASON}'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
 
         // set match-result after a short delay so the server sees team/season first
         setTimeout(function() {{
