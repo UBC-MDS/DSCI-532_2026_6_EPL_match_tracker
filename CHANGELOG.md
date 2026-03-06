@@ -3,8 +3,10 @@
 ### Added
 
 ### Changed
-- The dashboard now defaults to showing the most recent season available ("2024/25" for now) when first loaded or when filters are reset, rather than starting from the oldest available season.
-- **Justification:** Displaying the newest season makes the dashboard more relevant for users who want to analyze recent EPL results as soon as they visit. This also improves the usefulness of season-to-season KPI comparisons shown in KPI cards: by default, users now immediately see how current team performance compares to last year, without having to manually select the latest data.
+- The dashboard now defaults to showing the most recent season available (e.g., "2024/25") when first loaded or when filters are reset, rather than starting from the oldest available season.
+- **Justification:** Showing the current season first makes the dashboard immediately relevant for users interested in recent EPL results, and enables clear season-to-season KPI comparisons at a glance.
+- The default team selection remains as the first in alphabetical order, which is "Arsenal". We intentionally kept this order because Arsenal is a well-known club that has participated in almost every Premier League season, ensuring ample performance data. This helps provide users with a rich demo experience and reduces the chance of starting with a team that may have little or no data for some seasons.
+
 
 ### Fixed
 
