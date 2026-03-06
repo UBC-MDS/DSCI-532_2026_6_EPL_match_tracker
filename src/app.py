@@ -439,11 +439,22 @@ def server(input, output, session):
             result = input.input_result()
         except Exception:
             result = None
-
-        text = f"Currently viewing: {team} results for the {season} season"
-        if result and result != "All":
-            text += f" &mdash; filtered to {result.lower()} matches"
-        text += "."
+        try:
+            df = df_all[df_all["Season"] == season].copy()
+            mf = get_team_matches(df, team)
+            data_empty = mf.empty
+        except Exception:
+            data_empty = True
+            
+        if data_empty:
+            text = f"Current: no data for {team} in the {season} season."
+            if result and result != "All":
+                text += f" (no {result.lower()} matches)"
+        else:
+            text = f"Currently viewing: {team} results for the {season} season"
+            if result and result != "All":
+                text += f" &mdash; filtered to {result.lower()} matches"
+            text += "."
 
         desc_style = (
             "background:#fff; "
