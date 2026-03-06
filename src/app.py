@@ -199,12 +199,14 @@ app_ui = ui.page_fluid(
     page_style,
     hero_header(),
     ui.div(
-
-        
-
+        # Description
+        ui.div(
+            ui.div(
+                ui.output_ui("data_context_description"),
+                class_="charts-panel-section",
+            ),
         # ── Body row ──────────────────────────────────────────────────────────
         ui.div(
-
             # Sidebar
             ui.div(
                 ui.div("⚽ Filters", class_="sidebar-title"),
@@ -325,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function(){{
     }});
 }});
 """),
-)
+))
 
 
 # ── Server ─────────────────────────────────────────────────────────────────────
@@ -337,7 +339,7 @@ def server(input, output, session):
         df = df_all[df_all["Season"] == input.input_season()].copy()
         mf = get_team_matches(df, input.input_team())
         # apply match-result filter if provided
-        try:
+        try:    
             res = input.input_result()
         except Exception:
             res = None
@@ -420,6 +422,31 @@ def server(input, output, session):
                     n         = len(sub),
                 )
         return out
+        
+     # ── Data Description
+    @output
+    @render.ui
+    def data_context_description():
+        try:
+            team = input.input_team()
+        except Exception:
+            team = None
+        try:
+            season = input.input_season()
+        except Exception:
+            season = None
+        try:
+            result = input.input_result()
+        except Exception:
+            result = None
+
+        text = f"You are seeing data for <b>{team if team else '—'}</b> in season <b>{season if season else '—'}</b>"
+        if result and result != "All":
+            text += f" (only <b>{result.lower()}</b> matches)"
+        text += "."
+
+        # Nice style to make it clear and visible
+        return ui.div(text, style="font-size:15px; line-height:1.6; margin:12px 0 10px 0; color:#2c3e50; background:#f8fafd; border-radius:8px; padding:8px 16px;")
 
     # ── KPIs ────��─────────────────────────────────────────────────────────────
     @output
