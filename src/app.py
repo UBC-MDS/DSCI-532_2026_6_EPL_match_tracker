@@ -430,24 +430,31 @@ def server(input, output, session):
         try:
             team = input.input_team()
         except Exception:
-            team = None
+            team = "—"
         try:
             season = input.input_season()
         except Exception:
-            season = None
+            season = "—"
         try:
             result = input.input_result()
         except Exception:
             result = None
 
-        text = f"You are seeing data for <b>{team if team else '—'}</b> in season <b>{season if season else '—'}</b>"
+        text = f"Currently viewing: {team} results for the {season} season"
         if result and result != "All":
-            text += f" (only <b>{result.lower()}</b> matches)"
+            text += f" &mdash; filtered to {result.lower()} matches"
         text += "."
 
-        # Nice style to make it clear and visible
-        return ui.div(text, style="font-size:15px; line-height:1.6; margin:12px 0 10px 0; color:#2c3e50; background:#f8fafd; border-radius:8px; padding:8px 16px;")
+        desc_style = (
+            "background:#fff; "
+            "border-radius:10px; border:1px solid rgba(0,0,0,0.06); "
+            "box-shadow: 0 4px 20px rgba(16,24,40,0.06); "
+            "padding: 16px 20px; margin-bottom:12px; "
+            "font-size:16px; font-weight:600; color:#232323;"
+        )
 
+        return ui.div(text, style=desc_style)
+    
     # ── KPIs ────��─────────────────────────────────────────────────────────────
     @output
     @render.ui
