@@ -1,3 +1,19 @@
+## [0.3.0] - 2026-03-07
+
+### Added
+
+### Changed
+- The dashboard now defaults to showing the most recent season available ("2024/25" for now) when first loaded or when filters are reset, rather than starting from the oldest available season.
+- **Justification:** Displaying the newest season makes the dashboard more relevant for users who want to analyze recent EPL results as soon as they visit. This also improves the usefulness of season-to-season KPI comparisons shown in KPI cards: by default, users now immediately see how current team performance compares to last year, without having to manually select the latest data.
+
+### Fixed
+
+
+### Known Issues
+
+### Reflection
+
+
 ## [0.2.0] - 2026-02-28
 
 ### Added
