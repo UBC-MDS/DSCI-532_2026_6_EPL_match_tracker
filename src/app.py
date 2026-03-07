@@ -19,6 +19,7 @@ df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
 
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
+DEFAULT_SEASON = ALL_SEASONS[-1] 
 
 # Date defaults for date-range filter
 DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
@@ -198,17 +199,19 @@ app_ui = ui.page_fluid(
     page_style,
     hero_header(),
     ui.div(
-
-        
-
+        # Description
+        ui.div(
+            ui.div(
+                ui.output_ui("data_context_description"),
+                class_="charts-panel-section",
+            ),
         # ── Body row ──────────────────────────────────────────────────────────
         ui.div(
-
             # Sidebar
             ui.div(
                 ui.div("⚽ Filters", class_="sidebar-title"),
                 ui.input_select("input_team",   "Team",   choices=ALL_TEAMS, selected="Arsenal"),
-                ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected="2000/01"),
+                ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected=DEFAULT_SEASON),
                 ui.input_select("input_result", "Match result", choices=["All","Win","Draw","Loss"], selected="All"),
                     ui.output_ui("out_active_filters"),
                     ui.input_action_button("btn_reset", "Reset filters", class_="btn-reset"),
@@ -304,13 +307,13 @@ document.addEventListener('DOMContentLoaded', function(){{
 
         // set primary inputs first (team, season) as event-priority updates
         Shiny.setInputValue('input_team', 'Arsenal', {{priority: 'event'}});
-        Shiny.setInputValue('input_season', '2000/01', {{priority: 'event'}});
+        Shiny.setInputValue('input_season', '{DEFAULT_SEASON}', {{priority: 'event'}});
 
         // also update visible select elements immediately if present
         const selTeam = document.getElementById('input_team');
         if (selTeam) {{ selTeam.value = 'Arsenal'; selTeam.dispatchEvent(new Event('input')); selTeam.dispatchEvent(new Event('change')); }}
         const selSeason = document.getElementById('input_season');
-        if (selSeason) {{ selSeason.value = '2000/01'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
+        if (selSeason) {{ selSeason.value = '{DEFAULT_SEASON}'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
 
         // set match-result after a short delay so the server sees team/season first
         setTimeout(function() {{
@@ -324,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function(){{
     }});
 }});
 """),
-)
+))
 
 
 # ── Server ─────────────────────────────────────────────────────────────────────
@@ -336,7 +339,7 @@ def server(input, output, session):
         df = df_all[df_all["Season"] == input.input_season()].copy()
         mf = get_team_matches(df, input.input_team())
         # apply match-result filter if provided
-        try:
+        try:    
             res = input.input_result()
         except Exception:
             res = None
@@ -419,7 +422,50 @@ def server(input, output, session):
                     n         = len(sub),
                 )
         return out
+        
+     # ── Data Description
+    @output
+    @render.ui
+    def data_context_description():
+        try:
+            team = input.input_team()
+        except Exception:
+            team = "—"
+        try:
+            season = input.input_season()
+        except Exception:
+            season = "—"
+        try:
+            result = input.input_result()
+        except Exception:
+            result = None
+        try:
+            df = df_all[df_all["Season"] == season].copy()
+            mf = get_team_matches(df, team)
+            data_empty = mf.empty
+        except Exception:
+            data_empty = True
+            
+        if data_empty:
+            text = f"Current: no data for {team} in the {season} season."
+            if result and result != "All":
+                text += f" (no {result.lower()} matches)"
+        else:
+            text = f"Currently viewing: {team} results for the {season} season"
+            if result and result != "All":
+                text += f" &mdash; filtered to {result.lower()} matches"
+            text += "."
 
+        desc_style = (
+            "background:#fff; "
+            "border-radius:10px; border:1px solid rgba(0,0,0,0.06); "
+            "box-shadow: 0 4px 20px rgba(16,24,40,0.06); "
+            "padding: 16px 20px; margin-bottom:12px; "
+            "font-size:16px; font-weight:600; color:#232323;"
+        )
+
+        return ui.div(text, style=desc_style)
+    
     # ── KPIs ────��─────────────────────────────────────────────────────────────
     @output
     @render.ui
