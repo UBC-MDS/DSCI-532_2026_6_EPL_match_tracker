@@ -8,4 +8,7 @@ dependencies:
   - pandas
   - seaborn
   - shiny
+  - querychat
+  - anthropic
+  - python-dotenv
 prefix: /Users/raymondwang/miniforge3/envs/dsci532
