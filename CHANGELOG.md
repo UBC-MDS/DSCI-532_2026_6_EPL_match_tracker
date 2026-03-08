@@ -35,6 +35,7 @@
 ### Known Issues
 - Charts are rendered using Matplotlib (static PNGs). Interactive exploration (hover/zoom) is not yet available.
 - Some card/table heights use fixed pixel heights (320px) and may require responsive improvements for small viewports.
+- Considered changing the x-axis of the "Average Goals by Season Period" chart from Early/Mid/Late to a categorical "Half time / Full time" split; this was not implemented because a line chart is not appropriate for that categorical division and the available data do not provide meaningful insights for that view.
 
 ---
 
