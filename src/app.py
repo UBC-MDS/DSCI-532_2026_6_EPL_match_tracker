@@ -21,6 +21,11 @@ df_all["FullTimeResult"]     = df_all["FullTimeResult"].astype(str).str.strip()
 df_all["MatchDate"]          = pd.to_datetime(df_all["MatchDate"])
 df_all["FullTimeHomeGoals"]  = pd.to_numeric(df_all["FullTimeHomeGoals"])
 df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
+df_all["Result"] = df_all["FullTimeResult"].map({
+    "H": "Home team win",
+    "A": "Away team win",
+    "D": "Draw"
+})
 
 df_all["Result"] = df_all["FullTimeResult"].map({
     "H": "Home team win",
@@ -850,9 +855,15 @@ def server(input, output, session):
         ax.set_xticks(x)
         ax.set_xticklabels(x_labels, fontsize=9)
         ax.set_ylabel("Avg Goals Scored", fontsize=9)
-        ax.set_ylim(0, max(avg_goals + [1]) * 1.4)
+
+        ymax = max(avg_goals + home_avg + away_avg + [1])
+        ax.set_ylim(0, ymax * 1.4)
+
         _style_ax(ax)
+        ax.legend(fontsize=8, frameon=False)
+
         fig.tight_layout(pad=0.8)
+
         return fig
 
     @output
