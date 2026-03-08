@@ -628,85 +628,56 @@ def server(input, output, session):
         return fig
 
     # ── Story 3: Avg goals scored by period (line chart) ──────────────────────
-@output
-@render.plot
-def out_goals_by_period():
+    @output
+    @render.plot
+    def out_goals_by_period():
 
-    mf = assign_period(matches_filtered())
+        mf = assign_period(matches_filtered())
 
-    periods = ["Early", "Mid", "Late"]
-    x = list(range(len(periods)))
+        periods = ["Early", "Mid", "Late"]
+        x = list(range(len(periods)))
 
-    avg_goals = []
-    home_avg = []
-    away_avg = []
-    ns = []
+        avg_goals = []
+        home_avg = []
+        away_avg = []
+        ns = []
 
-    for p in periods:
-        sub = mf[mf["period"] == p]
-        ns.append(len(sub))
+        for p in periods:
+            sub = mf[mf["period"] == p]
+            ns.append(len(sub))
 
-        if sub.empty:
-            avg_goals.append(0)
-            home_avg.append(0)
-            away_avg.append(0)
-        else:
-            avg_goals.append(sub["goals_for"].mean())
-            home_avg.append(sub[sub["venue"] == "Home"]["goals_for"].mean())
-            away_avg.append(sub[sub["venue"] == "Away"]["goals_for"].mean())
+            if sub.empty:
+                avg_goals.append(0)
+                home_avg.append(0)
+                away_avg.append(0)
+            else:
+                avg_goals.append(sub["goals_for"].mean())
+                home_avg.append(sub[sub["venue"] == "Home"]["goals_for"].mean())
+                away_avg.append(sub[sub["venue"] == "Away"]["goals_for"].mean())
 
-    x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
+        x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
 
-    fig, ax = plt.subplots(figsize=(9, 3))
-    fig.patch.set_facecolor("#fff")
-    ax.set_facecolor("#fff")
+        fig, ax = plt.subplots(figsize=(9, 3))
+        fig.patch.set_facecolor("#fff")
+        ax.set_facecolor("#fff")
 
-    # Overall average goals line
-    ax.plot(
-        x,
-        avg_goals,
-        color="#d1d5db",
-        linewidth=2.2,
-        marker="o",
-        label="Overall Avg Goals",
-        zorder=2,
-    )
+        ax.plot(x, avg_goals, color="#d1d5db", linewidth=2.2, marker="o", label="Overall Avg Goals", zorder=2)
+        ax.plot(x, home_avg, color=C_HOME, linewidth=2.2, marker="o", label="Home Avg Goals", zorder=3)
+        ax.plot(x, away_avg, color=C_AWAY, linewidth=2.2, marker="o", label="Away Avg Goals", zorder=3)
 
-    # Home average goals
-    ax.plot(
-        x,
-        home_avg,
-        color=C_HOME,
-        linewidth=2.2,
-        marker="o",
-        label="Home Avg Goals",
-        zorder=3,
-    )
+        ax.set_xticks(x)
+        ax.set_xticklabels(x_labels, fontsize=9)
+        ax.set_ylabel("Avg Goals Scored", fontsize=9)
 
-    # Away average goals
-    ax.plot(
-        x,
-        away_avg,
-        color=C_AWAY,
-        linewidth=2.2,
-        marker="o",
-        label="Away Avg Goals",
-        zorder=3,
-    )
+        ymax = max(avg_goals + home_avg + away_avg + [1])
+        ax.set_ylim(0, ymax * 1.4)
 
-    ax.set_xticks(x)
-    ax.set_xticklabels(x_labels, fontsize=9)
-    ax.set_ylabel("Avg Goals Scored", fontsize=9)
+        _style_ax(ax)
+        ax.legend(fontsize=8, frameon=False)
 
-    ymax = max(avg_goals + home_avg + away_avg + [1])
-    ax.set_ylim(0, ymax * 1.4)
+        fig.tight_layout(pad=0.8)
 
-    _style_ax(ax)
-    ax.legend(fontsize=8, frameon=False)
-
-    fig.tight_layout(pad=0.8)
-
-    return fig
+        return fig
 
 
     # ── Match table ───────────────────────────────────────────────────────────
