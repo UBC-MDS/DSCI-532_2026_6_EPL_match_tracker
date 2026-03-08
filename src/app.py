@@ -16,6 +16,11 @@ df_all["FullTimeResult"]     = df_all["FullTimeResult"].astype(str).str.strip()
 df_all["MatchDate"]          = pd.to_datetime(df_all["MatchDate"])
 df_all["FullTimeHomeGoals"]  = pd.to_numeric(df_all["FullTimeHomeGoals"])
 df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
+df_all["Result"] = df_all["FullTimeResult"].map({
+    "H": "Home team win",
+    "A": "Away team win",
+    "D": "Draw"
+})
 
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
