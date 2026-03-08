@@ -5,6 +5,10 @@ import json
 import os
 import base64
 import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ── Load dataset ───────────────────────────────────────────────────────────────
 df_all = pd.read_csv("data/raw/epl_final.csv")
