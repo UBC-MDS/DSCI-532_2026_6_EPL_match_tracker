@@ -1,0 +1,52 @@
+What's the average number of goals per match?
+
+
+Query Data
+Calculate the average number of goals per match, including home and away breakdowns
+
+SELECT 
+  AVG(FullTimeHomeGoals + FullTimeAwayGoals) AS avg_goals_per_match,
+  AVG(FullTimeHomeGoals) AS avg_home_goals,
+  AVG(FullTimeAwayGoals) AS avg_away_goals
+FROM epl_matches
+avg_goals_per_match	avg_home_goals	avg_away_goals
+2.7180170575692966	1.5353944562899786	1.1826226012793177
+The average number of goals per match is 2.72 goals.
+
+Here's the breakdown:
+
+Home teams average 1.54 goals per match
+Away teams average 1.18 goals per match
+This shows that home teams tend to score about 0.36 more goals on average than away teams, which is a well-known advantage in football!
+
+What's the distribution of match results (wins, losses, draws)?
+Which matches had the most total goals?
+How do goal averages compare across different seasons?
+What's the distribution of match results (wins, losses, draws)?
+
+
+Query Data
+Calculate the distribution of match results (home wins, away wins, draws)
+
+SELECT 
+  Result,
+  COUNT(*) AS match_count,
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS percentage
+FROM epl_matches
+GROUP BY Result
+ORDER BY match_count DESC
+Result	match_count	percentage
+Home team win	4299	45.83
+Away team win	2768	29.51
+Draw	2313	24.66
+Here's the distribution of EPL match results:
+
+Result	Count	Percentage
+Home team win	4,299	45.83%
+Away team win	2,768	29.51%
+Draw	2,313	24.66%
+Home teams have a significant advantage—they win nearly 46% of matches, while away teams win only about 30%. Draws account for roughly 25% of all matches.
+
+Which team has the best home record?
+Which team has the best away record?
+Show me matches with 5+ total goals
