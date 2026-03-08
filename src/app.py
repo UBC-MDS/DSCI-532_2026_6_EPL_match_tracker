@@ -830,27 +830,39 @@ def server(input, output, session):
     @output
     @render.plot
     def out_goals_by_period():
-        s = summary_period()
+
+        mf = assign_period(matches_filtered())
+
         periods = ["Early", "Mid", "Late"]
-        avg_goals = [s[p]["avg_goals"] for p in periods]
-        ns = [s[p]["n"] for p in periods]
-        x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
         x = list(range(len(periods)))
+
+        avg_goals = []
+        home_avg = []
+        away_avg = []
+        ns = []
+
+        for p in periods:
+            sub = mf[mf["period"] == p]
+            ns.append(len(sub))
+
+            if sub.empty:
+                avg_goals.append(0)
+                home_avg.append(0)
+                away_avg.append(0)
+            else:
+                avg_goals.append(sub["goals_for"].mean())
+                home_avg.append(sub[sub["venue"] == "Home"]["goals_for"].mean())
+                away_avg.append(sub[sub["venue"] == "Away"]["goals_for"].mean())
+
+        x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
 
         fig, ax = plt.subplots(figsize=(9, 3))
         fig.patch.set_facecolor("#fff")
         ax.set_facecolor("#fff")
 
-        ax.plot(x, avg_goals, color="#d1d5db", linewidth=2.2, zorder=2)
-
-        for i, (val, col) in enumerate(zip(avg_goals, [C_EARLY, C_MID, C_LATE])):
-            ax.plot(i, val, marker="o", markersize=10, color=col, zorder=4)
-            ax.annotate(
-                f"{val:.2f}",
-                xy=(i, val), xytext=(0, 12),
-                textcoords="offset points",
-                ha="center", fontsize=9, fontweight="700", color=col,
-            )
+        ax.plot(x, avg_goals, color="#d1d5db", linewidth=2.2, marker="o", label="Overall Avg Goals", zorder=2)
+        ax.plot(x, home_avg, color=C_HOME, linewidth=2.2, marker="o", label="Home Avg Goals", zorder=3)
+        ax.plot(x, away_avg, color=C_AWAY, linewidth=2.2, marker="o", label="Away Avg Goals", zorder=3)
 
         ax.set_xticks(x)
         ax.set_xticklabels(x_labels, fontsize=9)
