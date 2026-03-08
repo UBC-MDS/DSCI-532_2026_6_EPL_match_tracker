@@ -6,19 +6,24 @@
   - If no matching data exists for the user's selection, the description box informs the user: "Current: no data for Arsenal in the 2024/25 season," maintaining context even when filters result in empty results.
   - Added two additional lines to the **Story 3 chart** to display the **average goals scored at Home and Away separately across season periods (Early / Mid / Late)**.  
     - This allows users to compare how team scoring performance changes depending on    match venue across different parts of the season.
-  
+- Integrated AI-powered chat feature using `querychat` and the Anthropic API (`claude` model), allowing users to query and explore EPL match data conversationally directly within the dashboard.
+- Added `python-dotenv` support for managing secrets locally via a `.env` file — the app now loads `ANTHROPIC_API_KEY` from the environment at startup.
+- Updated `requirements.txt` to include `querychat`, `anthropic`, and `python-dotenv` for Posit Cloud deployment compatibility.
+- Updated `environment.yml` to include `querychat`, `anthropic`, and `python-dotenv` for local conda environment setup.
+
 ### Changed
 - The dashboard now defaults to showing the most recent season available (e.g., "2024/25") when first loaded or when filters are reset, rather than starting from the oldest available season.
 - **Justification:** Showing the current season first makes the dashboard immediately relevant for users interested in recent EPL results, and enables clear season-to-season KPI comparisons at a glance.
 - The default team selection remains as the first in alphabetical order, which is "Arsenal". We intentionally kept this order because Arsenal is a well-known club that has participated in almost every Premier League season, ensuring ample performance data. This helps provide users with a rich demo experience and reduces the chance of starting with a team that may have little or no data for some seasons.
-
 
 ### Fixed
 
 
 ### Known Issues
 
+
 ### Reflection
+- Considered changing the x-axis of the "Average Goals by Season Period" chart from Early/Mid/Late to a categorical "Half time / Full time" split; this was not implemented because a line chart is not appropriate for that categorical division and the available data do not provide meaningful insights for that view.
 
 
 ## [0.2.0] - 2026-02-28
@@ -58,7 +63,7 @@
 ### Known Issues
 - Charts are rendered using Matplotlib (static PNGs). Interactive exploration (hover/zoom) is not yet available.
 - Some card/table heights use fixed pixel heights (320px) and may require responsive improvements for small viewports.
-- Considered changing the x-axis of the "Average Goals by Season Period" chart from Early/Mid/Late to a categorical "Half time / Full time" split; this was not implemented because a line chart is not appropriate for that categorical division and the available data do not provide meaningful insights for that view.
+
 
 ---
 
