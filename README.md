@@ -49,10 +49,27 @@ cd DSCI-532_2026_6_EPL_match_tracker
 ### 2. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate dsci532
 ```
 
-### 3. Run the app locally
+### 3. Set up environment variables
+
+This app uses the Anthropic API for AI-powered features. Create a `.env` file in the root of the repository:
+
+```bash
+touch .env
+```
+
+Then open it and add your Anthropic API key:
+
+```
+ANTHROPIC_API_KEY='your-api-key-here'
+```
+
+> **Note:** The `.env` file is listed in `.gitignore` and should **never** be committed to the repository.
+
+### 4. Run the app locally
 
 ```bash
 shiny run src/app.py
