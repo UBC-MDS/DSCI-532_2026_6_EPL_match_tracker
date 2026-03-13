@@ -5,44 +5,30 @@ import json
 import os
 import base64
 import datetime
+import ibis
 
 from dotenv import load_dotenv
 from querychat import QueryChat
 
 load_dotenv()
 
-# ── Load dataset ───────────────────────────────────────────────────────────────
-df_all = pd.read_csv("data/raw/epl_final.csv")
-df_all.columns               = df_all.columns.str.strip()
-df_all["Season"]             = df_all["Season"].astype(str).str.strip()
-df_all["HomeTeam"]           = df_all["HomeTeam"].astype(str).str.strip()
-df_all["AwayTeam"]           = df_all["AwayTeam"].astype(str).str.strip()
-df_all["FullTimeResult"]     = df_all["FullTimeResult"].astype(str).str.strip()
-df_all["MatchDate"]          = pd.to_datetime(df_all["MatchDate"])
-df_all["FullTimeHomeGoals"]  = pd.to_numeric(df_all["FullTimeHomeGoals"])
-df_all["FullTimeAwayGoals"]  = pd.to_numeric(df_all["FullTimeAwayGoals"])
-df_all["Result"] = df_all["FullTimeResult"].map({
-    "H": "Home team win",
-    "A": "Away team win",
-    "D": "Draw"
-})
+# ── Load dataset with DuckDB (Lazy Loading) ────────────────────────────────────
+con = ibis.duckdb.connect()
+tbl_all = con.read_parquet("data/processed/epl_final.parquet")
 
-df_all["Result"] = df_all["FullTimeResult"].map({
-    "H": "Home team win",
-    "A": "Away team win",
-    "D": "Draw"
-})
+# Execute once to get metadata for UI choice lists
+df_meta = tbl_all.execute()
 
-ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
-ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
-DEFAULT_SEASON = ALL_SEASONS[-1]
+ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
+ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
+DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
 
-DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
-DEFAULT_DATE_END = df_all["MatchDate"].max().date().isoformat()
+DEFAULT_DATE_START = df_meta["MatchDate"].min() if not df_meta.empty else None
+DEFAULT_DATE_END = df_meta["MatchDate"].max() if not df_meta.empty else None
 
-# Anthropic 
+# Anthropic QueryChat (pass the full metadata df for now)
 qc = QueryChat(
-    df_all,
+    df_meta,
     "epl_matches",
     client="anthropic/claude-haiku-4-5"
 )
@@ -70,6 +56,17 @@ LAST_UPDATED = datetime.date.today().isoformat()
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
+    """Convert full match records to team-centric view (Home vs Away)."""
+    # Handle empty DataFrame early
+    if df.empty:
+        # Create empty DataFrame with required columns
+        df = df.copy()
+        df["venue"] = pd.Series(dtype=str)
+        df["goals_for"] = pd.Series(dtype=float)
+        df["goals_against"] = pd.Series(dtype=float)
+        df["win"] = pd.Series(dtype=int)
+        return df
+    
     home = df[df["HomeTeam"] == team].copy()
     away = df[df["AwayTeam"] == team].copy()
 
@@ -87,6 +84,7 @@ def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
 
 
 def assign_period(df: pd.DataFrame) -> pd.DataFrame:
+    """Assign Early/Mid/Late period based on chronological position."""
     df = df.copy()
     n = len(df)
     if n == 0:
@@ -98,6 +96,41 @@ def assign_period(df: pd.DataFrame) -> pd.DataFrame:
         for i in range(n)
     ]
     return df
+
+
+def filter_matches_ibis(team: str, season: str, result: str):
+    """
+    Build an ibis filter expression for team, season, and result.
+    Returns an ibis table expression (not yet executed).
+    """
+    expr = tbl_all
+    
+    # Filter by team (home OR away)
+    if team:
+        expr = expr.filter((expr.HomeTeam == team) | (expr.AwayTeam == team))
+    
+    # Filter by season
+    if season:
+        expr = expr.filter(expr.Season == season)
+    
+    # Filter by result
+    if result and result != "All":
+        if result == "Win":
+            # Home win OR Away win
+            expr = expr.filter(
+                ((expr.HomeTeam == team) & (expr.FullTimeResult == "H")) |
+                ((expr.AwayTeam == team) & (expr.FullTimeResult == "A"))
+            )
+        elif result == "Draw":
+            expr = expr.filter(expr.FullTimeResult == "D")
+        elif result == "Loss":
+            # Loss = (home team AND away result) OR (away team AND home result)
+            expr = expr.filter(
+                ((expr.HomeTeam == team) & (expr.FullTimeResult == "A")) |
+                ((expr.AwayTeam == team) & (expr.FullTimeResult == "H"))
+            )
+    
+    return expr
 
 
 # ── Colours ────────────────────────────────────────────────────────────────────
@@ -544,21 +577,27 @@ def server(input, output, session):
     def download_ai_data():
         yield qc_vals.df().to_csv(index=False)
 
+    # ────── LAZY LOADING: Filter at database level with ibis ──────────────────
     @reactive.calc
     def matches_filtered():
-        df = df_all[df_all["Season"] == input.input_season()].copy()
-        mf = get_team_matches(df, input.input_team())
-        try:
-            res = input.input_result()
-        except Exception:
-            res = None
-        if res and res != "All":
-            if res == "Win":
-                mf = mf[mf["win"] == 1]
-            elif res == "Draw":
-                mf = mf[mf["FullTimeResult"] == "D"]
-            elif res == "Loss":
-                mf = mf[(mf["win"] == 0) & (mf["FullTimeResult"] != "D")]
+        """
+        Build ibis filter expression from inputs, execute only filtered rows.
+        This ensures ALL filtering happens before rows enter pandas DataFrame.
+        """
+        team = input.input_team()
+        season = input.input_season()
+        result = input.input_result()
+        
+        # Build filter expression (lazy, not executed yet)
+        expr = filter_matches_ibis(team, season, result)
+        
+        # Execute to get pandas DataFrame (only filtered rows loaded)
+        mf = expr.execute()
+        
+        # Add team-centric derived columns (Home vs Away view)
+        if not mf.empty:
+            mf = get_team_matches(mf, team)
+        
         return mf
 
     @reactive.calc
@@ -566,7 +605,7 @@ def server(input, output, session):
         mf = matches_filtered()
         out = {}
         for venue in ("Home", "Away"):
-            sub = mf[mf["venue"] == venue]
+            sub = mf[mf["venue"] == venue] if not mf.empty else pd.DataFrame()
             if sub.empty:
                 out[venue] = dict(win_rate=0, avg_goals_for=0, avg_goals_against=0, n=0)
             else:
@@ -579,8 +618,11 @@ def server(input, output, session):
         return out
 
     def _metrics_for_season(season: str):
-        df = df_all[df_all["Season"] == season]
-        mf = get_team_matches(df, input.input_team())
+        """Get metrics for a specific season (all teams)."""
+        expr = tbl_all.filter(tbl_all.Season == season)
+        df = expr.execute()
+        team = input.input_team()
+        mf = get_team_matches(df, team)
         if mf.empty:
             return dict(n=0, win_rate=0.0, avg_goals_for=0.0, avg_goals_against=0.0)
         return dict(
@@ -618,7 +660,7 @@ def server(input, output, session):
         mf = assign_period(matches_filtered())
         out = {}
         for period in ("Early", "Mid", "Late"):
-            sub = mf[mf["period"] == period]
+            sub = mf[mf["period"] == period] if not mf.empty else pd.DataFrame()
             if sub.empty:
                 out[period] = dict(avg_goals=0, n=0)
             else:
@@ -644,8 +686,7 @@ def server(input, output, session):
         except Exception:
             result = None
         try:
-            df = df_all[df_all["Season"] == season].copy()
-            mf = get_team_matches(df, team)
+            mf = matches_filtered()
             data_empty = mf.empty
         except Exception:
             data_empty = True
@@ -882,6 +923,11 @@ def server(input, output, session):
     @render.data_frame
     def out_matches_table():
         mf = assign_period(matches_filtered()).copy()
+        
+        # Handle empty DataFrame
+        if mf.empty:
+            return render.DataGrid(pd.DataFrame(), width="100%")
+        
         mf["MatchDate"] = mf["MatchDate"].dt.strftime("%Y-%m-%d")
         display = mf[[
             "MatchDate", "HomeTeam", "AwayTeam",
