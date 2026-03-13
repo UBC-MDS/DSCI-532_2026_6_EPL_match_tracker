@@ -33,6 +33,7 @@ df_all["Result"] = df_all["FullTimeResult"].map({
     "D": "Draw"
 })
 
+
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
 DEFAULT_SEASON = ALL_SEASONS[-1]
