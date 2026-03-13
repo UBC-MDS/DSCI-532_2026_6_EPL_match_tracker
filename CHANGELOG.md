@@ -1,3 +1,28 @@
+## [Unreleased]
+
+### Added
+- **Lazy Loading with Parquet + DuckDB**: Migrated data loading from CSV to parquet format stored in `data/processed/`. All filtering now happens at the database level using ibis + DuckDB, ensuring only matching rows are loaded into memory. This enables the app to scale efficiently for large datasets.
+- **Enhanced Error Handling**: Improved handling of empty DataFrames across all reactive calculations and output renders. Dashboard, charts, and tables now gracefully display empty states instead of throwing KeyError exceptions.
+- **Dependencies**: Added `ibis-framework[duckdb]`, `pyarrow`, and `pyarrow-hotfix` to support lazy loading and parquet operations.
+
+### Changed
+- **Data Loading**: Replaced `pd.read_csv("data/raw/epl_final.csv")` with `ibis.duckdb.connect().read_parquet("data/processed/epl_final.parquet")` for lazy evaluation.
+- **Filtering Logic**: Introduced `filter_matches_ibis()` function to build filter expressions at the database level before execution. All team, season, and result filters now apply via ibis before rows enter pandas DataFrames.
+- **`matches_filtered()` Reactive Calc**: Updated to use lazy ibis filtering instead of pandas slicing. Filters are now applied before `.execute()` is called.
+- **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
+- **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
+
+### Fixed
+- **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
+- **Column Missing Error**: Ensured derived columns (`venue`, `goals_for`, `goals_against`, `win`) are present even in empty DataFrames.
+
+### Known Issues
+
+### Reflection
+- **One-time Setup**: Teams must run `python -c "import pandas as pd; df = pd.read_csv('data/raw/epl_final.csv'); df.to_parquet('data/processed/epl_final.parquet')"` to create the initial parquet file.
+- **Dependencies**: Install with `pip install -r requirements.txt` or `conda env create -f environment.yaml`.
+
+---
 ## [0.3.0] - 2026-03-07
 
 ### Added
