@@ -57,6 +57,16 @@ LAST_UPDATED = datetime.date.today().isoformat()
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
     """Convert full match records to team-centric view (Home vs Away)."""
+    # Handle empty DataFrame early
+    if df.empty:
+        # Create empty DataFrame with required columns
+        df = df.copy()
+        df["venue"] = pd.Series(dtype=str)
+        df["goals_for"] = pd.Series(dtype=float)
+        df["goals_against"] = pd.Series(dtype=float)
+        df["win"] = pd.Series(dtype=int)
+        return df
+    
     home = df[df["HomeTeam"] == team].copy()
     away = df[df["AwayTeam"] == team].copy()
 
@@ -595,7 +605,7 @@ def server(input, output, session):
         mf = matches_filtered()
         out = {}
         for venue in ("Home", "Away"):
-            sub = mf[mf["venue"] == venue]
+            sub = mf[mf["venue"] == venue] if not mf.empty else pd.DataFrame()
             if sub.empty:
                 out[venue] = dict(win_rate=0, avg_goals_for=0, avg_goals_against=0, n=0)
             else:
@@ -650,7 +660,7 @@ def server(input, output, session):
         mf = assign_period(matches_filtered())
         out = {}
         for period in ("Early", "Mid", "Late"):
-            sub = mf[mf["period"] == period]
+            sub = mf[mf["period"] == period] if not mf.empty else pd.DataFrame()
             if sub.empty:
                 out[period] = dict(avg_goals=0, n=0)
             else:
@@ -913,6 +923,11 @@ def server(input, output, session):
     @render.data_frame
     def out_matches_table():
         mf = assign_period(matches_filtered()).copy()
+        
+        # Handle empty DataFrame
+        if mf.empty:
+            return render.DataGrid(pd.DataFrame(), width="100%")
+        
         mf["MatchDate"] = mf["MatchDate"].dt.strftime("%Y-%m-%d")
         display = mf[[
             "MatchDate", "HomeTeam", "AwayTeam",
