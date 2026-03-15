@@ -21,7 +21,17 @@ df_meta = tbl_all.execute()
 
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
-DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
+# DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
+# Build a mapping: team -> sorted list of seasons where that team has data
+TEAM_SEASONS = {}
+for team in ALL_TEAMS:
+    seasons = sorted(df_meta[
+        (df_meta["HomeTeam"] == team) | (df_meta["AwayTeam"] == team)
+    ]["Season"].unique().tolist())
+    TEAM_SEASONS[team] = seasons
+
+# Default season = Arsenal's latest season
+DEFAULT_SEASON = TEAM_SEASONS["Arsenal"][-1] if TEAM_SEASONS.get("Arsenal") else ALL_SEASONS[-1]
 
 DEFAULT_DATE_START = df_meta["MatchDate"].min() if not df_meta.empty else None
 DEFAULT_DATE_END = df_meta["MatchDate"].max() if not df_meta.empty else None
@@ -131,24 +141,6 @@ def filter_matches_ibis(team: str, season: str, result: str):
             )
     
     return expr
-
-
-def get_available_seasons_for_team(team: str) -> list:
-    """
-    Get all seasons where a specific team has data.
-    Returns a sorted list of available seasons.
-    """
-    if not team:
-        return ALL_SEASONS
-    
-    expr = tbl_all.filter((tbl_all.HomeTeam == team) | (tbl_all.AwayTeam == team))
-    df = expr.execute()
-    
-    if df.empty:
-        return []
-    
-    available_seasons = sorted(df["Season"].unique().tolist())
-    return available_seasons
 
 
 # ── Colours ────────────────────────────────────────────────────────────────────
@@ -278,7 +270,7 @@ app_ui = ui.page_fluid(
                     ui.div(
                         ui.div("⚽ Filters", class_="sidebar-title"),
                         ui.input_select("input_team", "Team", choices=ALL_TEAMS, selected="Arsenal"),
-                        ui.output_ui("input_season_output"),
+                        ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected=DEFAULT_SEASON),
                         ui.input_select("input_result", "Match result", choices=["All", "Win", "Draw", "Loss"], selected="All"),
                         ui.output_ui("out_active_filters"),
                         ui.input_action_button("btn_reset", "Reset filters", class_="btn-reset"),
@@ -457,36 +449,20 @@ document.addEventListener('DOMContentLoaded', function(){{
 """),
 )
 
-# ── Server ──────────────────────────────────��──────────────────────────────────
+# ── Server ─────────────────────────────────────────────────────────────────────
 def server(input, output, session):
     qc_vals = qc.server()
-
-    @output
-    @render.ui
-    def input_season_output():
-        """
-        Dynamically update season dropdown based on selected team.
-        Only show seasons where the selected team has data.
-        """
+    
+    @reactive.effect
+    @reactive.event(input.input_team)
+    def _update_seasons_for_team():
         team = input.input_team()
-        available_seasons = get_available_seasons_for_team(team)
+        available = TEAM_SEASONS.get(team, ALL_SEASONS)
+        # Keep current season if valid, otherwise pick the latest available
+        current_season = input.input_season()
+        selected = current_season if current_season in available else available[-1]
+        ui.update_select("input_season", choices=available, selected=selected)
         
-        # Get current selected season
-        current_season = input.input_season() if hasattr(input, 'input_season') else DEFAULT_SEASON
-        
-        # If current season not available for team, default to last available
-        if current_season not in available_seasons and available_seasons:
-            current_season = available_seasons[-1]
-        elif not available_seasons:
-            current_season = None
-        
-        return ui.input_select(
-            "input_season",
-            "Season",
-            choices=available_seasons,
-            selected=current_season,
-        )
-
     @output
     @render.text
     def ai_title():
