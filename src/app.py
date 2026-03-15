@@ -133,6 +133,24 @@ def filter_matches_ibis(team: str, season: str, result: str):
     return expr
 
 
+def get_available_seasons_for_team(team: str) -> list:
+    """
+    Get all seasons where a specific team has data.
+    Returns a sorted list of available seasons.
+    """
+    if not team:
+        return ALL_SEASONS
+    
+    expr = tbl_all.filter((tbl_all.HomeTeam == team) | (tbl_all.AwayTeam == team))
+    df = expr.execute()
+    
+    if df.empty:
+        return []
+    
+    available_seasons = sorted(df["Season"].unique().tolist())
+    return available_seasons
+
+
 # ── Colours ────────────────────────────────────────────────────────────────────
 C_HOME          = "#472A4B"
 C_AWAY          = "#e15759"
@@ -260,7 +278,7 @@ app_ui = ui.page_fluid(
                     ui.div(
                         ui.div("⚽ Filters", class_="sidebar-title"),
                         ui.input_select("input_team", "Team", choices=ALL_TEAMS, selected="Arsenal"),
-                        ui.input_select("input_season", "Season", choices=ALL_SEASONS, selected=DEFAULT_SEASON),
+                        ui.output_ui("input_season_output"),
                         ui.input_select("input_result", "Match result", choices=["All", "Win", "Draw", "Loss"], selected="All"),
                         ui.output_ui("out_active_filters"),
                         ui.input_action_button("btn_reset", "Reset filters", class_="btn-reset"),
@@ -439,9 +457,35 @@ document.addEventListener('DOMContentLoaded', function(){{
 """),
 )
 
-# ── Server ─────────────────────────────────────────────────────────────────────
+# ── Server ──────────────────────────────────��──────────────────────────────────
 def server(input, output, session):
     qc_vals = qc.server()
+
+    @output
+    @render.ui
+    def input_season_output():
+        """
+        Dynamically update season dropdown based on selected team.
+        Only show seasons where the selected team has data.
+        """
+        team = input.input_team()
+        available_seasons = get_available_seasons_for_team(team)
+        
+        # Get current selected season
+        current_season = input.input_season() if hasattr(input, 'input_season') else DEFAULT_SEASON
+        
+        # If current season not available for team, default to last available
+        if current_season not in available_seasons and available_seasons:
+            current_season = available_seasons[-1]
+        elif not available_seasons:
+            current_season = None
+        
+        return ui.input_select(
+            "input_season",
+            "Season",
+            choices=available_seasons,
+            selected=current_season,
+        )
 
     @output
     @render.text
