@@ -1,14 +1,18 @@
 name: dsci532
 channels:
   - conda-forge
+  - defaults
 dependencies:
-  - matplotlib
   - python=3.11
-  - jupyter
-  - pandas
-  - seaborn
-  - shiny
-  - querychat
-  - anthropic
-  - python-dotenv
+  - pandas=2.2.2
+  - matplotlib=3.10.6
+  - pip
+  - pip:
+    - shiny
+    - querychat
+    - anthropic
+    - python-dotenv
+    - ibis-framework[duckdb]
+    - pyarrow
+    - pyarrow-hotfix
 prefix: /Users/raymondwang/miniforge3/envs/dsci532
