@@ -362,7 +362,7 @@ app_ui = ui.page_fluid(
 
                 ui.div(
                     ui.div(
-                        ui.output_text("ai_title"),
+                        ui.output_ui("ai_title"),
                         style="font-size:18px; font-weight:700; margin-bottom:12px;"
                     ),
 
@@ -463,10 +463,20 @@ def server(input, output, session):
         selected = current_season if current_season in available else available[-1]
         ui.update_select("input_season", choices=available, selected=selected)
         
-    @output
-    @render.text
-    def ai_title():
-        return qc_vals.title() or "All EPL matches"
+@output
+@render.ui
+def ai_title():
+    df = qc_vals.df()
+    title = qc_vals.title() or "All EPL matches"
+    if df.empty and qc_vals.title():
+        return ui.div(
+            ui.div(title, style="font-size:18px; font-weight:700; margin-bottom:6px;"),
+            ui.div(
+                "⚠️ No matches found for this query. The charts below are empty. Try refining your question.",
+                style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; color:#856404;"
+            )
+        )
+    return ui.div(title, style="font-size:18px; font-weight:700;")
 
     @output
     @render.data_frame
