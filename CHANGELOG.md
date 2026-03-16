@@ -4,6 +4,9 @@
 - **Lazy Loading with Parquet + DuckDB**: Migrated data loading from CSV to parquet format stored in `data/processed/`. All filtering now happens at the database level using ibis + DuckDB, ensuring only matching rows are loaded into memory. This enables the app to scale efficiently for large datasets.
 - **Enhanced Error Handling**: Improved handling of empty DataFrames across all reactive calculations and output renders. Dashboard, charts, and tables now gracefully display empty states instead of throwing KeyError exceptions.
 - **Dependencies**: Added `ibis-framework[duckdb]`, `pyarrow`, and `pyarrow-hotfix` to support lazy loading and parquet operations.
+- **Tests**: Added pytest unit tests for `get_team_matches` and `assign_period` helper functions in `tests/test_utils.py`. Added 4 Playwright browser tests covering dashboard load, team filter, result filter chip, and reset button behavior in `tests/test_app.py`.
+- **Refactored helpers**: Extracted `get_team_matches` and `assign_period` from `src/app.py` into `src/utils.py` to enable unit testing and improve code organization.
+- **Test dependencies**: Added `pytest`, `pytest-playwright`, and `playwright` to `requirements.txt` and `environment.yml`.
 
 ### Changed
 - **Data Loading**: Replaced `pd.read_csv("data/raw/epl_final.csv")` with `ibis.duckdb.connect().read_parquet("data/processed/epl_final.parquet")` for lazy evaluation.
@@ -11,6 +14,7 @@
 - **`matches_filtered()` Reactive Calc**: Updated to use lazy ibis filtering instead of pandas slicing. Filters are now applied before `.execute()` is called.
 - **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
 - **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
+- **README**: Updated with instructions to run unit tests and Playwright tests locally.
 
 ### Fixed
 - **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
