@@ -483,7 +483,7 @@ def server(input, output, session):
         ax.set_facecolor("#fff")
 
         if df.empty:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center", fontsize=12)
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
             ax.axis("off")
             return fig
 
@@ -523,7 +523,7 @@ def server(input, output, session):
         ax.set_facecolor("#fff")
 
         if df.empty:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center", fontsize=12)
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
             ax.axis("off")
             return fig
 
@@ -569,7 +569,7 @@ def server(input, output, session):
         ax.set_facecolor("#fff")
 
         if df.empty:
-            ax.text(0.5, 0.5, "No data", ha="center", va="center", fontsize=12)
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
             ax.axis("off")
             return fig
 
