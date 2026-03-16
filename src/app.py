@@ -2,6 +2,7 @@ from shiny import App, ui, render, reactive
 import matplotlib.pyplot as plt
 import pandas as pd
 import json
+import sys
 import os
 import base64
 import datetime
@@ -9,6 +10,7 @@ import ibis
 
 from dotenv import load_dotenv
 from querychat import QueryChat
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils import get_team_matches, assign_period
 
 load_dotenv()
