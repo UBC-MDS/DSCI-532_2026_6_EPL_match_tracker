@@ -21,7 +21,17 @@ df_meta = tbl_all.execute()
 
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
-DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
+# DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
+# Build a mapping: team -> sorted list of seasons where that team has data
+TEAM_SEASONS = {}
+for team in ALL_TEAMS:
+    seasons = sorted(df_meta[
+        (df_meta["HomeTeam"] == team) | (df_meta["AwayTeam"] == team)
+    ]["Season"].unique().tolist())
+    TEAM_SEASONS[team] = seasons
+
+# Default season = Arsenal's latest season
+DEFAULT_SEASON = TEAM_SEASONS["Arsenal"][-1] if TEAM_SEASONS.get("Arsenal") else ALL_SEASONS[-1]
 
 DEFAULT_DATE_START = df_meta["MatchDate"].min() if not df_meta.empty else None
 DEFAULT_DATE_END = df_meta["MatchDate"].max() if not df_meta.empty else None
@@ -442,7 +452,17 @@ document.addEventListener('DOMContentLoaded', function(){{
 # ── Server ─────────────────────────────────────────────────────────────────────
 def server(input, output, session):
     qc_vals = qc.server()
-
+    
+    @reactive.effect
+    @reactive.event(input.input_team)
+    def _update_seasons_for_team():
+        team = input.input_team()
+        available = TEAM_SEASONS.get(team, ALL_SEASONS)
+        # Keep current season if valid, otherwise pick the latest available
+        current_season = input.input_season()
+        selected = current_season if current_season in available else available[-1]
+        ui.update_select("input_season", choices=available, selected=selected)
+        
     @output
     @render.text
     def ai_title():

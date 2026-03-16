@@ -15,6 +15,7 @@
 ### Fixed
 - **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
 - **Column Missing Error**: Ensured derived columns (`venue`, `goals_for`, `goals_against`, `win`) are present even in empty DataFrames.
+- **Season Dropdown Filtered by Team**: The season selector now only shows seasons where the selected team has data, preventing users from selecting a season with no matches for that team. A `TEAM_SEASONS` lookup is computed at startup, and a reactive observer (`_update_seasons_for_team`) updates the dropdown whenever the team changes. The default and reset state correctly show Arsenal with its latest available season.
 
 ### Known Issues
 
