@@ -77,6 +77,27 @@ shiny run src/app.py
 
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
+### 5. Run the tests
+
+Unit tests (pytest):
+```bash
+pytest tests/test_utils.py -v
+```
+
+Playwright behavior tests (requires the app to be running in a separate terminal):
+```bash
+# Terminal 1 - start the app
+shiny run src/app.py
+
+# Terminal 2 - run the tests
+pytest tests/test_app.py -v
+```
+
+Run all tests at once:
+```bash
+pytest tests/ -v
+```
+
 ---
 
 ## Contributing

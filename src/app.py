@@ -9,6 +9,7 @@ import ibis
 
 from dotenv import load_dotenv
 from querychat import QueryChat
+from utils import get_team_matches, assign_period
 
 load_dotenv()
 
@@ -65,49 +66,6 @@ INLINE_HEADER_DATAURI = _load_header_datauri()
 LAST_UPDATED = datetime.date.today().isoformat()
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
-def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
-    """Convert full match records to team-centric view (Home vs Away)."""
-    # Handle empty DataFrame early
-    if df.empty:
-        # Create empty DataFrame with required columns
-        df = df.copy()
-        df["venue"] = pd.Series(dtype=str)
-        df["goals_for"] = pd.Series(dtype=float)
-        df["goals_against"] = pd.Series(dtype=float)
-        df["win"] = pd.Series(dtype=int)
-        return df
-    
-    home = df[df["HomeTeam"] == team].copy()
-    away = df[df["AwayTeam"] == team].copy()
-
-    home["venue"]         = "Home"
-    home["goals_for"]     = home["FullTimeHomeGoals"]
-    home["goals_against"] = home["FullTimeAwayGoals"]
-    home["win"]           = (home["FullTimeResult"] == "H").astype(int)
-
-    away["venue"]         = "Away"
-    away["goals_for"]     = away["FullTimeAwayGoals"]
-    away["goals_against"] = away["FullTimeHomeGoals"]
-    away["win"]           = (away["FullTimeResult"] == "A").astype(int)
-
-    return pd.concat([home, away]).sort_values("MatchDate").reset_index(drop=True)
-
-
-def assign_period(df: pd.DataFrame) -> pd.DataFrame:
-    """Assign Early/Mid/Late period based on chronological position."""
-    df = df.copy()
-    n = len(df)
-    if n == 0:
-        df["period"] = pd.Series(dtype=str)
-        return df
-    third = n / 3
-    df["period"] = [
-        "Early" if i < third else ("Mid" if i < 2 * third else "Late")
-        for i in range(n)
-    ]
-    return df
-
-
 def filter_matches_ibis(team: str, season: str, result: str):
     """
     Build an ibis filter expression for team, season, and result.
