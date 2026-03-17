@@ -1188,7 +1188,7 @@ def server(input, output, session):
         )
 
         ax.set_xticks(list(x))
-        ax.set_xticklabels([f"{v}\n(n={s[v]['n']})" for v in venues], fontsize=9)
+        ax.set_xticklabels([v for v in venues], fontsize=9)
         ax.set_ylabel("Avg Goals", fontsize=9)
         ax.set_ylim(0, max(
             [s[v]["avg_goals_for"] for v in venues] +
@@ -1212,7 +1212,7 @@ def server(input, output, session):
         ax.set_facecolor("#fff")
 
         bars = ax.bar(
-            [f"{v}\n(n={s[v]['n']})" for v in venues],
+            venues,
             vals,
             color=[C_HOME, C_AWAY],
             width=0.45, zorder=3,
@@ -1251,7 +1251,7 @@ def server(input, output, session):
                 home_avg.append(sub[sub["venue"] == "Home"]["goals_for"].mean())
                 away_avg.append(sub[sub["venue"] == "Away"]["goals_for"].mean())
 
-        x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
+        x_labels = [p for i, p in enumerate(periods)]
 
         fig, ax = plt.subplots(figsize=(9, 3))
         fig.patch.set_facecolor("#fff")
