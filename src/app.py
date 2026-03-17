@@ -75,10 +75,27 @@ def _init_gspread():
     creds = None
     try:
         if sa_json:
+            # Safer parsing: strip surrounding single/double quotes and normalize newlines
             try:
-                creds_dict = _json.loads(sa_json)
+                s = sa_json.strip()
+                if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
+                    s = s[1:-1]
+                # If the JSON contains actual newline characters (from multiline .env),
+                # escape them so json.loads can parse the string values correctly.
+                # First normalize CRLF to LF, then escape real newlines into literal \n.
+                if '\r\n' in s:
+                    # contains escaped CRLF sequences, leave as-is
+                    pass
+                # If actual newline characters are present, escape them
+                if '\n' not in s and '\\n' not in s and ('\r' in s or '\n' in s or '\r\n' in s):
+                    s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
+                # Also handle the common case where env contains literal newlines
+                if '\n' in s and '\\n' not in s:
+                    # convert actual newlines to escaped sequences
+                    s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
+                creds_dict = _json.loads(s)
             except Exception as e:
-                print('ERROR parsing GOOGLE_SERVICE_ACCOUNT_JSON:', e)
+                print('ERROR parsing GOOGLE_SERVICE_ACCOUNT_JSON; attempting fallback:', e)
                 raise
             creds = Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets"])
             gc = gspread.authorize(creds)
@@ -420,7 +437,37 @@ def server_with_logging(input, output, session):
 
     @reactive.effect
     def _log_qc_usage():
-        pass
+        try:
+            df = qc_vals.df()
+        except Exception:
+            return
+
+        try:
+            title = qc_vals.title() or ""
+        except Exception:
+            title = ""
+        try:
+            sql = qc_vals.sql() if hasattr(qc_vals, 'sql') else ""
+        except Exception:
+            sql = ""
+
+        query_text = title or sql or ""
+        if df is None:
+            return
+
+        n = len(df) if df is not None else 0
+        cols = ",".join(list(df.columns)[:6]) if (df is not None and not df.empty) else ""
+        response_summary = f"returned {n} rows; cols: {cols}"
+        ts = datetime.datetime.utcnow().isoformat()
+
+        global LAST_LOGGED
+        pair = (query_text, response_summary)
+        if query_text.strip() and pair != LAST_LOGGED:
+            try:
+                log_interaction(query_text, response_summary, ts)
+                LAST_LOGGED = pair
+            except Exception:
+                pass
 
 # ── Hero Header ────────────────────────────────────────────────────────────────
 def hero_header():
@@ -529,6 +576,7 @@ app_ui = ui.page_fluid(
                                 ui.output_data_frame("out_matches_table"),
                                 class_="table-card",
                             ),
+                            
                             class_="chart-row-bottom",
                         ),
 
@@ -555,6 +603,7 @@ app_ui = ui.page_fluid(
                         qc.ui(),
                         class_="ai-chat-shell",
                     ),
+                    
                     ui.hr(),
                     ui.input_action_button("ai_reset", "Reset AI filters", class_="btn-reset"),
                     ui.download_button("download_ai_data", "Download filtered data"),
@@ -597,6 +646,13 @@ app_ui = ui.page_fluid(
                             class_="chart-card",
                         ),
                         class_="chart-row-top",
+                    ),
+
+                    ui.div(
+                        ui.div("Recent AI Queries", class_="chart-title"),
+                        ui.div("Latest AI queries and responses", class_="chart-subtitle"),
+                        ui.output_data_frame("out_logs"),
+                        class_="table-card",
                     ),
 
                     class_="charts-panel",
@@ -683,6 +739,34 @@ def server(input, output, session):
     @render.data_frame
     def ai_table():
         return render.DataGrid(qc_vals.df(), width="100%")
+
+    @output
+    @render.data_frame
+    def out_logs():
+        df = read_recent_logs(20)
+        try:
+            if df is None or df.empty:
+                return render.DataGrid(pd.DataFrame(columns=["Timestamp", "Query", "Response"]), width="100%")
+            # Normalize column names and order
+            cols = list(df.columns)
+            mapping = {}
+            for c in cols:
+                lc = c.lower()
+                if lc == "timestamp" or lc == "time":
+                    mapping[c] = "Timestamp"
+                elif lc in ("query", "question", "prompt"):
+                    mapping[c] = "Query"
+                elif lc in ("response", "answer"):
+                    mapping[c] = "Response"
+            df = df.rename(columns=mapping)
+            # Ensure required columns exist
+            for required in ["Timestamp", "Query", "Response"]:
+                if required not in df.columns:
+                    df[required] = ""
+            df = df[["Timestamp", "Query", "Response"]]
+            return render.DataGrid(df, width="100%")
+        except Exception:
+            return render.DataGrid(pd.DataFrame(columns=["Timestamp", "Query", "Response"]) , width="100%")
 
     @output
     @render.plot
@@ -1191,33 +1275,29 @@ def server(input, output, session):
             season = input.input_season()
         except Exception:
             season = None
+
+        # Build UI chips for current filters and AI query summary (no logging here)
         try:
-            df = qc_vals.df()
-            # Try to access title and sql if available
+            if team:
+                parts.append(ui.span(team, class_="chip"))
+            if season:
+                parts.append(ui.span(season, class_="chip"))
+            # try to show short AI title/summary if available
             try:
                 title = qc_vals.title() or ""
             except Exception:
                 title = ""
             try:
-                sql = qc_vals.sql() if hasattr(qc_vals, 'sql') else ""
+                df = qc_vals.df()
+                n = len(df) if df is not None else 0
             except Exception:
-                sql = ""
-            n = len(df) if df is not None else 0
-            cols = ",".join(list(df.columns)[:6]) if (df is not None and not df.empty) else ""
-            query_text = title or sql or ""
-            response_summary = f"returned {n} rows; cols: {cols}"
-            ts = datetime.datetime.utcnow().isoformat()
-            global LAST_LOGGED
-            pair = (query_text, response_summary)
-            if pair != LAST_LOGGED and query_text.strip():
-                try:
-                    log_interaction(query_text, response_summary, ts)
-                    LAST_LOGGED = pair
-                except Exception:
-                    pass
+                n = 0
+            if title:
+                parts.append(ui.span(f"Query: {title} — {n} rows", class_="chip"))
         except Exception:
-            return
+            return ui.div()
 
+        return ui.div(*parts, class_="active-filters")
     # expose other things if needed
     return locals()
 
