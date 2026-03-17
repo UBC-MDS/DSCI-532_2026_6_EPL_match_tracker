@@ -354,7 +354,7 @@ html, body, .container-fluid {
 /* Body and sidebar */
 .body-row { display:flex; gap:14px; align-items:stretch; }
 .sidebar { width:260px; flex-shrink:0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px; display:flex; flex-direction:column; gap:12px; align-self:stretch; }
-.sidebar.ai-sidebar { width:420px; }
+.sidebar.ai-sidebar { width:400px; }
 .sidebar-title{ font-size:14px; font-weight:700; color:#111827; }
 .sidebar label{ font-size:12px; font-weight:600; color:#374151; }
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
@@ -653,21 +653,7 @@ app_ui = ui.page_fluid(
                         class_="chart-row-top",
                     ),
 
-                    ui.div(
-                        ui.div(
-                            ui.div("Average Home vs Away Goals", class_="chart-title"),
-                            ui.div("Computed from filtered matches", class_="chart-subtitle"),
-                            ui.output_plot("ai_plot_goals", height="280px"),
-                            class_="chart-card",
-                        ),
-                        ui.div(
-                            ui.div("Matches by Season", class_="chart-title"),
-                            ui.div("Count of filtered matches per season", class_="chart-subtitle"),
-                            ui.output_plot("ai_plot_season", height="280px"),
-                            class_="chart-card",
-                        ),
-                        class_="chart-row-top",
-                    ),
+                    
 
                     ui.div(
                         ui.div("Recent AI Queries", class_="chart-title"),
@@ -805,14 +791,26 @@ def server(input, output, session):
 
         counts = df["Result"].value_counts()
 
-        bars = ax.bar(counts.index, counts.values, zorder=3)
-        ax.set_ylabel("Count", fontsize=9)
-        ax.set_xlabel("")
+        bars = ax.bar(counts.index, counts.values, color=C_HOME, zorder=3)
+        ax.set_ylabel("Count", fontsize=9, labelpad=8)
+        ax.set_xlabel("Result", fontsize=9, labelpad=8)
+        # position the x-label a bit lower so it is not clipped by the card edge
+        try:
+            ax.xaxis.set_label_coords(0.5, -0.12)
+        except Exception:
+            pass
         ax.spines[["top", "right"]].set_visible(False)
         ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
         ax.set_axisbelow(True)
-        ax.tick_params(axis="x", labelrotation=10, labelsize=8)
-        ax.tick_params(axis="y", labelsize=8)
+        # make x-tick labels slightly smaller and add padding to avoid clipping
+        ax.tick_params(axis="x", labelrotation=0, labelsize=8, pad=10)
+        ax.tick_params(axis="y", labelsize=8, pad=6)
+        # ensure tick labels are not clipped by the axes box
+        try:
+            for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+                lbl.set_clip_on(False)
+        except Exception:
+            pass
 
         for bar in bars:
             h = bar.get_height()
@@ -824,9 +822,31 @@ def server(input, output, session):
                 va="bottom",
                 fontsize=8,
                 fontweight="600",
+                clip_on=False,
             )
 
-        fig.tight_layout(pad=0.8)
+        # Reduce padding and expand the axes to use the available card space.
+        # Also shift the axes down slightly so the y-axis and first-bar label are not clipped
+        fig.tight_layout(pad=0.6)
+        try:
+            # increase vertical space and nudge the axes further down so the
+            # y-axis and first-bar label are clearly visible and chart is centered
+            # increase bottom margin so x-axis label and tick labels are visible
+            fig.subplots_adjust(left=0.20, right=0.98, top=0.86, bottom=0.28)
+            # lower x-label further as an extra safeguard
+            try:
+                ax.xaxis.set_label_coords(0.5, -0.22)
+            except Exception:
+                pass
+            ax.margins(0)
+            pos = ax.get_position()
+            # nudge down by a larger fraction of the figure height
+            new_y0 = max(pos.y0 - 0.09, 0.01)
+            # slightly reduce height so the axes remain inside the figure after nudging
+            new_height = max(pos.height * 0.92, 0.2)
+            ax.set_position([pos.x0, new_y0, pos.width, new_height])
+        except Exception:
+            pass
         return fig
 
     @output
