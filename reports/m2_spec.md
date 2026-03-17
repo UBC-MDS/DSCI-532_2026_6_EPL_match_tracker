@@ -239,8 +239,8 @@ shiny run src/app.py
 1. Push to GitHub (dev or main branch).
 2. In Posit Cloud, configure environment variables:
    - `ANTHROPIC_API_KEY`
-   - `GSPREAD_SHEET_ID` 
-   - `GOOGLE_SERVICE_ACCOUNT_JSON` 
+   - `GSPREAD_SHEET_ID` (optional)
+   - `GOOGLE_SERVICE_ACCOUNT_JSON` (optional)
 3. Deploy app. The parquet file should be in the repo, so the one-time setup is already done.
 
 ---
