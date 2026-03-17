@@ -1,3 +1,39 @@
+## [Unreleased]
+
+### Added
+- **Lazy Loading with Parquet + DuckDB**: Migrated data loading from CSV to parquet format stored in `data/processed/`. All filtering now happens at the database level using ibis + DuckDB, ensuring only matching rows are loaded into memory. This enables the app to scale efficiently for large datasets.
+- **Enhanced Error Handling**: Improved handling of empty DataFrames across all reactive calculations and output renders. Dashboard, charts, and tables now gracefully display empty states instead of throwing KeyError exceptions.
+- **Dependencies**: Added `ibis-framework[duckdb]`, `pyarrow`, and `pyarrow-hotfix` to support lazy loading and parquet operations.
+- **Tests**: Added pytest unit tests for `get_team_matches` and `assign_period` helper functions in `tests/test_utils.py`. Added 4 Playwright browser tests covering dashboard load, team filter, result filter chip, and reset button behavior in `tests/test_app.py`.
+- **Refactored helpers**: Extracted `get_team_matches` and `assign_period` from `src/app.py` into `src/utils.py` to enable unit testing and improve code organization.
+ - **Query interaction log**: Added logging of user AI queries and responses. Logs are written to `logs/querychat_log.csv` as the local fallback and when credentials are provided appended to a Google Sheet (configured via `GSPREAD_SHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` / `GSPREAD_CREDENTIALS_PATH`). 
+ - **`src/app.py` logging improvements**: Implemented `_init_gspread()` to safely parse service-account JSON or credential file, added explicit startup status prints, made Google Sheets optional (graceful CSV fallback), added `log_interaction()` CSV fallback behavior, and improved `read_recent_logs()` to prefer Sheets when available. Added lightweight duplicate-avoidance state and surfaced tracebacks on init failures.
+ - **Notebook: Query interaction analysis**: added `notebooks/querychat_log.ipynb` Describing why log is needed and demonstration on how it would be used it for our goals, data pipeline sketch and examples.
+ - **Dependencies / environment**: Updated `environment.yml` to include pip-installed packages required for AI and Sheets integration (`querychat`, `anthropic`, `python-dotenv`, `gspread`, and `google-auth`). Ensured `requirements.txt` lists `gspread` and `google-auth` for pip-based installs.
+- **Test dependencies**: Added `pytest`, `pytest-playwright`, and `playwright` to `requirements.txt` and `environment.yml`.
+
+### Changed
+- **Data Loading**: Replaced `pd.read_csv("data/raw/epl_final.csv")` with `ibis.duckdb.connect().read_parquet("data/processed/epl_final.parquet")` for lazy evaluation.
+- **Filtering Logic**: Introduced `filter_matches_ibis()` function to build filter expressions at the database level before execution. All team, season, and result filters now apply via ibis before rows enter pandas DataFrames.
+- **`matches_filtered()` Reactive Calc**: Updated to use lazy ibis filtering instead of pandas slicing. Filters are now applied before `.execute()` is called.
+- **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
+- **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
+- **README**: Updated with instructions to run unit tests and Playwright tests locally.
+
+### Fixed
+- **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
+- **Column Missing Error**: Ensured derived columns (`venue`, `goals_for`, `goals_against`, `win`) are present even in empty DataFrames.
+- **Season Dropdown Filtered by Team**: The season selector now only shows seasons where the selected team has data, preventing users from selecting a season with no matches for that team. A `TEAM_SEASONS` lookup is computed at startup, and a reactive observer (`_update_seasons_for_team`) updates the dropdown whenever the team changes. The default and reset state correctly show Arsenal with its latest available season.
+- **AI Explorer empty state (#74)**: Charts now display a descriptive "No matches found" message instead of a blank "No data" label. A yellow warning banner is shown above the charts when an AI query returns no results, guiding users to refine their query.
+
+
+### Known Issues
+
+### Reflection
+- **One-time Setup**: Teams must run `python -c "import pandas as pd; df = pd.read_csv('data/raw/epl_final.csv'); df.to_parquet('data/processed/epl_final.parquet')"` to create the initial parquet file.
+- **Dependencies**: Install with `pip install -r requirements.txt` or `conda env create -f environment.yaml`.
+
+---
 ## [0.3.0] - 2026-03-07
 
 ### Added
