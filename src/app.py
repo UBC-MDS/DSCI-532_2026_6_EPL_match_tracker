@@ -27,12 +27,6 @@ df_all["Result"] = df_all["FullTimeResult"].map({
     "D": "Draw"
 })
 
-df_all["Result"] = df_all["FullTimeResult"].map({
-    "H": "Home team win",
-    "A": "Away team win",
-    "D": "Draw"
-})
-
 ALL_TEAMS   = sorted(set(df_all["HomeTeam"].tolist() + df_all["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_all["Season"].unique().tolist())
 DEFAULT_SEASON = ALL_SEASONS[-1]
@@ -40,7 +34,7 @@ DEFAULT_SEASON = ALL_SEASONS[-1]
 DEFAULT_DATE_START = df_all["MatchDate"].min().date().isoformat()
 DEFAULT_DATE_END = df_all["MatchDate"].max().date().isoformat()
 
-# Anthropic 
+# Anthropic
 qc = QueryChat(
     df_all,
     "epl_matches",
@@ -65,7 +59,6 @@ def _load_header_datauri():
     return None
 
 INLINE_HEADER_DATAURI = _load_header_datauri()
-
 LAST_UPDATED = datetime.date.today().isoformat()
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -147,11 +140,59 @@ html, body, .container-fluid {
 
 /* Body and sidebar */
 .body-row { display:flex; gap:14px; align-items:stretch; }
-.sidebar { width:260px; flex-shrink:0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px; display:flex; flex-direction:column; gap:12px; align-self:stretch; }
+.sidebar {
+    width:260px;
+    flex-shrink:0;
+    background:#fff;
+    border-radius:10px;
+    border:1px solid #e0e4ea;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06);
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-self:stretch;
+}
 .sidebar-title{ font-size:14px; font-weight:700; color:#111827; }
 .sidebar label{ font-size:12px; font-weight:600; color:#374151; }
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
 .btn-reset{ padding:6px 10px; font-size:12px; border-radius:6px; background:#f3f4f6; color:#111827; }
+
+/* Fixed bounded AI chat container */
+.ai-sidebar {
+    height: 720px;
+    overflow: hidden;
+}
+
+.ai-chat-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ai-chat-shell > * {
+    min-height: 0;
+}
+
+.ai-chat-shell .querychat,
+.ai-chat-shell .querychat-container,
+.ai-chat-shell .chat-container,
+.ai-chat-shell [class*="querychat"] {
+    height: 100%;
+    min-height: 0;
+}
+
+.ai-chat-shell .messages,
+.ai-chat-shell .chat-messages,
+.ai-chat-shell .message-list,
+.ai-chat-shell [class*="messages"],
+.ai-chat-shell [class*="message_list"] {
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+}
 
 /* Header banner image */
 .header-banner-img{
@@ -310,11 +351,14 @@ app_ui = ui.page_fluid(
                         "Try asking: show only Arsenal matches, only draws, Liverpool away wins, or matches where the home team scored at least 4 goals.",
                         style="font-size:12px; color:#6b7280;"
                     ),
-                    qc.ui(),
+                    ui.div(
+                        qc.ui(),
+                        class_="ai-chat-shell",
+                    ),
                     ui.hr(),
                     ui.input_action_button("ai_reset", "Reset AI filters", class_="btn-reset"),
                     ui.download_button("download_ai_data", "Download filtered data"),
-                    class_="sidebar",
+                    class_="sidebar ai-sidebar",
                 ),
 
                 ui.div(
@@ -830,7 +874,6 @@ def server(input, output, session):
     @output
     @render.plot
     def out_goals_by_period():
-
         mf = assign_period(matches_filtered())
 
         periods = ["Early", "Mid", "Late"]
@@ -875,7 +918,6 @@ def server(input, output, session):
         ax.legend(fontsize=8, frameon=False)
 
         fig.tight_layout(pad=0.8)
-
         return fig
 
     @output
