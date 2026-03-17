@@ -13,15 +13,15 @@ import ibis
 
 from dotenv import load_dotenv
 from querychat import QueryChat
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import get_team_matches, assign_period
 
-# ensure local imports work when running as module
+
+# SETUP: Ensure sys.path includes src directory for local imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 try:
     from utils import get_team_matches, assign_period
-except Exception:
-    # fallback to local implementations if utils not available
+except ImportError:
+    # Fallback implementations if utils.py is not available
     def get_team_matches(df: pd.DataFrame, team: str) -> pd.DataFrame:
         home = df[df["HomeTeam"] == team].copy()
         away = df[df["AwayTeam"] == team].copy()
@@ -48,14 +48,17 @@ except Exception:
         ]
         return df
 
-load_dotenv()
-import json as _json
 
+# ENVIRONMENT SETUP
+load_dotenv()
+
+
+# GOOGLE SHEETS LOGGING SETUP
 try:
     import gspread
     from google.oauth2.service_account import Credentials
     _GSPREAD_AVAILABLE = True
-except Exception:
+except ImportError:
     _GSPREAD_AVAILABLE = False
 
 _LOG_DIR = pathlib.Path("logs")
@@ -67,78 +70,73 @@ _GSPREAD_WS = None
 
 
 def _init_gspread():
+    """Initialize Google Sheets client for logging."""
     global _GSPREAD_ENABLED, _GSPREAD_WS
     if not _GSPREAD_AVAILABLE:
         return
+
     sheet_id = os.getenv("GSPREAD_SHEET_ID")
     sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
     sa_path = os.getenv("GSPREAD_CREDENTIALS_PATH")
-    creds = None
+
     try:
         if sa_json:
             # Safer parsing: strip surrounding single/double quotes and normalize newlines
             try:
-                s = sa_json.strip()
-                if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
-                    s = s[1:-1]
-                if '\r\n' in s:
-                    pass
-                # If actual newline characters are present, escape them
-                if '\n' not in s and '\\n' not in s and ('\r' in s or '\n' in s or '\r\n' in s):
-                    s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
-                if '\n' in s and '\\n' not in s:
-                    s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
-                creds_dict = _json.loads(s)
+                creds_dict = json.loads(sa_json)
             except Exception as e:
-                print('ERROR parsing GOOGLE_SERVICE_ACCOUNT_JSON; attempting fallback:', e)
-                raise
-            creds = Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+                print(f"ERROR parsing GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+                return
+            creds = Credentials.from_service_account_info(
+                creds_dict,
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
             gc = gspread.authorize(creds)
             if sheet_id:
                 _GSPREAD_WS = gc.open_by_key(sheet_id).sheet1
                 _GSPREAD_ENABLED = True
+                print(f"✓ Google Sheets logging enabled. Sheet: {_GSPREAD_WS.title}")
             return
+
         if sa_path and os.path.exists(sa_path):
             if hasattr(gspread, "service_account"):
                 gc = gspread.service_account(filename=sa_path)
             else:
-                creds = Credentials.from_service_account_file(sa_path, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+                creds = Credentials.from_service_account_file(
+                    sa_path,
+                    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+                )
                 gc = gspread.authorize(creds)
             if sheet_id:
                 _GSPREAD_WS = gc.open_by_key(sheet_id).sheet1
                 _GSPREAD_ENABLED = True
+                print(f"✓ Google Sheets logging enabled. Sheet: {_GSPREAD_WS.title}")
             return
-    except Exception:
-        import traceback
-        print('ERROR initializing Google Sheets client:')
-        traceback.print_exc()
+
+    except Exception as e:
+        print(f"⚠ Google Sheets logging disabled: {e}")
         _GSPREAD_ENABLED = False
         _GSPREAD_WS = None
 
 
 _init_gspread()
-try:
-    if _GSPREAD_ENABLED and _GSPREAD_WS is not None:
-        try:
-            sheet_title = getattr(_GSPREAD_WS, 'title', None)
-        except Exception:
-            sheet_title = None
-        print(f'Google Sheets logging enabled. Sheet title: {sheet_title or "(unknown)"}')
-    else:
-        print('Google Sheets logging disabled — logs will be written to logs/querychat_log.csv')
-except Exception:
-    pass
+
+if not _GSPREAD_ENABLED:
+    print("ℹ Logs will be written to logs/querychat_log.csv")
 
 
 def log_interaction(query: str, response: str, timestamp: str):
+    """Log AI interaction to Google Sheets or local CSV."""
     row = [timestamp, query or "", response or ""]
+
     if _GSPREAD_ENABLED and _GSPREAD_WS is not None:
         try:
             _GSPREAD_WS.append_row(row, value_input_option="USER_ENTERED")
             return
         except Exception as e:
-            print('ERROR appending row to Google Sheet:', e)
-            
+            print(f"ERROR appending to Google Sheet: {e}")
+
+    # Fallback: write to CSV
     try:
         import csv
         exists = _LOG_CSV.exists()
@@ -147,59 +145,61 @@ def log_interaction(query: str, response: str, timestamp: str):
             if not exists:
                 writer.writerow(["timestamp", "query", "response"])
             writer.writerow(row)
-    except Exception:
-        return
+    except Exception as e:
+        print(f"ERROR writing to CSV log: {e}")
 
 
 def read_recent_logs(n: int = 50) -> pd.DataFrame:
+    """Read recent logs from Google Sheets or CSV."""
     if _GSPREAD_ENABLED and _GSPREAD_WS is not None:
         try:
             records = _GSPREAD_WS.get_all_records()
             df = pd.DataFrame(records)
             if "timestamp" in df.columns:
-                df = df.rename(columns={"timestamp": "Timestamp", "query": "Query", "response": "Response"})
+                df = df.rename(columns={
+                    "timestamp": "Timestamp",
+                    "query": "Query",
+                    "response": "Response"
+                })
             return df.sort_values("Timestamp", ascending=False).head(n)
         except Exception:
             pass
+
     if _LOG_CSV.exists():
         try:
             df = pd.read_csv(_LOG_CSV)
             if "timestamp" in df.columns:
-                df = df.rename(columns={"timestamp": "Timestamp", "query": "Query", "response": "Response"})
+                df = df.rename(columns={
+                    "timestamp": "Timestamp",
+                    "query": "Query",
+                    "response": "Response"
+                })
             return df.sort_values("Timestamp", ascending=False).head(n)
         except Exception:
             return pd.DataFrame()
+
     return pd.DataFrame()
 
-LAST_LOGGED = None
 
-# Load dataset 
+# DATA LOADING
 con = ibis.duckdb.connect()
-tbl_all = con.read_parquet("data/processed/epl_final.parquet")
-
-# Execute once to get metadata for UI choice lists
 try:
+    tbl_all = con.read_parquet("data/processed/epl_final.parquet")
     df_meta = tbl_all.execute()
-except Exception:
-    # fallback: try reading CSV if parquet missing
+except Exception as e:
+    print(f"⚠ Could not load parquet: {e}")
     try:
         df_meta = pd.read_csv("data/raw/epl_final.csv")
-    except Exception:
+        tbl_all = con.from_pandas(df_meta)
+    except Exception as e2:
+        print(f"ERROR: Could not load data: {e2}")
         df_meta = pd.DataFrame()
+        tbl_all = con.from_pandas(df_meta)
 
+
+# UI METADATA
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist())) if not df_meta.empty else []
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist()) if not df_meta.empty else []
-TEAM_SEASONS = {}
-for team in ALL_TEAMS:
-    seasons = sorted(df_meta[(df_meta["HomeTeam"] == team) | (df_meta["AwayTeam"] == team)]["Season"].unique().tolist())
-    TEAM_SEASONS[team] = seasons
-
-# Default season = Arsenal's latest season if available
-DEFAULT_SEASON = TEAM_SEASONS.get("Arsenal", ALL_SEASONS)[-1] if ALL_SEASONS else None
-df_meta = tbl_all.execute()
-
-ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
-ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
 
 TEAM_SEASONS = {}
 for team in ALL_TEAMS:
@@ -208,40 +208,36 @@ for team in ALL_TEAMS:
     ]["Season"].unique().tolist())
     TEAM_SEASONS[team] = seasons
 
-# Default season = Arsenal's latest season
-DEFAULT_SEASON = TEAM_SEASONS["Arsenal"][-1] if TEAM_SEASONS.get("Arsenal") else ALL_SEASONS[-1]
+# Default season = Arsenal's latest season if available
+DEFAULT_SEASON = TEAM_SEASONS.get("Arsenal", ALL_SEASONS)[-1] if ALL_SEASONS else None
 
 DEFAULT_DATE_START = df_meta["MatchDate"].min() if not df_meta.empty else None
 DEFAULT_DATE_END = df_meta["MatchDate"].max() if not df_meta.empty else None
 
-# Anthropic QueryChat 
-qc = QueryChat(df_meta, "epl_matches", client="anthropic/claude-haiku-4-5")
 
-# Header image helper
-# Anthropic QueryChat (pass the full metadata df for now)
+# AI INTEGRATION
 qc = QueryChat(
     df_meta,
     "epl_matches",
     client="anthropic/claude-haiku-4-5"
 )
 
-# Load a local JPEG as a data-URI so the header doesn't rely on static file serving.
-    
-try:
-    from app_ui import app_ui  
-    from app_server import server as app_server  
-    app_defined_externally = True
-except Exception:
-    app_defined_externally = False
+
+# UI STYLING & ASSETS
+
+LAST_UPDATED = datetime.date.today().isoformat()
+
+
 def _load_header_datauri():
+    """Load header image as base64 data URI for inline embedding."""
     candidates = [
         os.path.join("img", "stadium.jpg"),
         os.path.join("src", "www", "stadium.jpg"),
         os.path.join("www", "stadium.jpg"),
     ]
-    for p in candidates:
+    for path in candidates:
         try:
-            with open(p, "rb") as fh:
+            with open(path, "rb") as fh:
                 b = fh.read()
             b64 = base64.b64encode(b).decode("ascii")
             return f"data:image/jpeg;base64,{b64}"
@@ -249,65 +245,8 @@ def _load_header_datauri():
             continue
     return None
 
+
 INLINE_HEADER_DATAURI = _load_header_datauri()
-
-LAST_UPDATED = datetime.date.today().isoformat()
-
-
-def filter_matches_ibis(team: str, season: str, result: str):
-    """
-    Build an ibis filter expression for team, season, and result.
-    Returns an ibis table expression (not yet executed).
-    """
-    expr = tbl_all
-    
-    # Filter by team (home OR away)
-    if team:
-        expr = expr.filter((expr.HomeTeam == team) | (expr.AwayTeam == team))
-    
-    # Filter by season
-    if season:
-        # Normalize season formats: accept '2024-25' or '2024/25' or with en-dash
-        try:
-            s = str(season).strip()
-            # replace en-dash and em-dash with hyphen
-            s = s.replace('–', '-').replace('—', '-')
-            # if hyphenated form like '2024-25', convert to '2024/25'
-            if '-' in s and '/' not in s:
-                s = s.replace('-', '/')
-            season_norm = s
-        except Exception:
-            season_norm = season
-        expr = expr.filter(expr.Season == season_norm)
-    
-    # Filter by result
-    if result and result != "All":
-        if result == "Win":
-            # Home win OR Away win
-            expr = expr.filter(
-                ((expr.HomeTeam == team) & (expr.FullTimeResult == "H")) |
-                ((expr.AwayTeam == team) & (expr.FullTimeResult == "A"))
-            )
-        elif result == "Draw":
-            expr = expr.filter(expr.FullTimeResult == "D")
-        elif result == "Loss":
-            # Loss = (home team AND away result) OR (away team AND home result)
-            expr = expr.filter(
-                ((expr.HomeTeam == team) & (expr.FullTimeResult == "A")) |
-                ((expr.AwayTeam == team) & (expr.FullTimeResult == "H"))
-            )
-    
-    return expr
-
-
-# Colours
-C_HOME          = "#472A4B"
-C_AWAY          = "#e15759"
-C_GOALS_FOR     = "#472A4B"
-C_GOALS_AGAINST = "#e15759"
-C_EARLY         = "#472A4B"
-C_MID           = "#e15759"
-C_LATE          = "#4e79a7"
 
 page_style = ui.tags.style("""
 html, body, .container-fluid {
@@ -367,22 +306,11 @@ html, body, .container-fluid {
     overflow: hidden;
 }
 
-/* Make the querychat widget fill the available space */
 .ai-chat-shell > * {
     flex: 1 1 auto;
     min-height: 0;
 }
 
-/* Common querychat/container wrappers */
-.ai-chat-shell .querychat,
-.ai-chat-shell .querychat-container,
-.ai-chat-shell .chat-container,
-.ai-chat-shell [class*="querychat"],
-.ai-chat-shell [class*="chat"] {
-    min-height: 0;
-}
-
-/* Common message areas: scroll inside instead of growing box */
 .ai-chat-shell .messages,
 .ai-chat-shell .chat-messages,
 .ai-chat-shell .message-list,
@@ -430,61 +358,20 @@ html, body, .container-fluid {
 .app-footer p{ margin:0; }
 """)
 
-if not app_defined_externally:
-    try:
-        with open(os.path.join(os.path.dirname(__file__), "_ui_server_fragment.py"), "r", encoding="utf-8") as fh:
-            fragment = fh.read()
-        exec(fragment, globals())
-    except Exception:
-        app_ui = ui.page_fluid(ui.h1("EPL Performance Dashboard (minimal)"))
-        def server(input, output, session):
-            pass
 
-def server_with_logging(input, output, session):
-    qc_vals = qc.server()
+# COLOR SCHEME
+C_HOME = "#472A4B"
+C_AWAY = "#e15759"
+C_GOALS_FOR = "#472A4B"
+C_GOALS_AGAINST = "#e15759"
+C_EARLY = "#472A4B"
+C_MID = "#e15759"
+C_LATE = "#4e79a7"
 
-    if 'server' in globals():
-        try:
-            server(input, output, session)
-        except Exception:
-            pass
 
-    @reactive.effect
-    def _log_qc_usage():
-        try:
-            df = qc_vals.df()
-        except Exception:
-            return
-
-        try:
-            title = qc_vals.title() or ""
-        except Exception:
-            title = ""
-        try:
-            sql = qc_vals.sql() if hasattr(qc_vals, 'sql') else ""
-        except Exception:
-            sql = ""
-
-        query_text = title or sql or ""
-        if df is None:
-            return
-
-        n = len(df) if df is not None else 0
-        cols = ",".join(list(df.columns)[:6]) if (df is not None and not df.empty) else ""
-        response_summary = f"returned {n} rows; cols: {cols}"
-        ts = datetime.datetime.utcnow().isoformat()
-
-        global LAST_LOGGED
-        pair = (query_text, response_summary)
-        if query_text.strip() and pair != LAST_LOGGED:
-            try:
-                log_interaction(query_text, response_summary, ts)
-                LAST_LOGGED = pair
-            except Exception:
-                pass
-
-# Hero Header 
+# HELPER FUNCTIONS
 def hero_header():
+    """Render the hero header with stadium image and title."""
     img_src = INLINE_HEADER_DATAURI if INLINE_HEADER_DATAURI else "/www/stadium.jpg"
     return ui.div(
         ui.img(src=img_src, class_="header-banner-img", alt="Stadium"),
@@ -511,11 +398,45 @@ def hero_header():
         style="position:relative; margin-bottom:20px;",
     )
 
-# UI 
+
+def filter_matches_ibis(team: str, season: str, result: str):
+    """Build an ibis filter expression for team, season, and result."""
+    expr = tbl_all
+
+    # Filter by team (home OR away)
+    if team:
+        expr = expr.filter((expr.HomeTeam == team) | (expr.AwayTeam == team))
+
+    # Filter by season
+    if season:
+        expr = expr.filter(expr.Season == season)
+
+    # Filter by result
+    if result and result != "All":
+        if result == "Win":
+            expr = expr.filter(
+                ((expr.HomeTeam == team) & (expr.FullTimeResult == "H")) |
+                ((expr.AwayTeam == team) & (expr.FullTimeResult == "A"))
+            )
+        elif result == "Draw":
+            expr = expr.filter(expr.FullTimeResult == "D")
+        elif result == "Loss":
+            expr = expr.filter(
+                ((expr.HomeTeam == team) & (expr.FullTimeResult == "A")) |
+                ((expr.AwayTeam == team) & (expr.FullTimeResult == "H"))
+            )
+
+    return expr
+
+
+
+# UI DEFINITION
+
 app_ui = ui.page_fluid(
     page_style,
     hero_header(),
     ui.navset_tab(
+        # ───────── DASHBOARD TAB ─────────
         ui.nav_panel(
             "Dashboard",
             ui.div(
@@ -526,6 +447,7 @@ app_ui = ui.page_fluid(
                     ),
                 ),
                 ui.div(
+                    # Sidebar
                     ui.div(
                         ui.div("⚽ Filters", class_="sidebar-title"),
                         ui.input_select("input_team", "Team", choices=ALL_TEAMS, selected="Arsenal"),
@@ -536,7 +458,9 @@ app_ui = ui.page_fluid(
                         class_="sidebar",
                     ),
 
+                    # Main content
                     ui.div(
+                        # KPI cards
                         ui.div(
                             ui.div(
                                 ui.div("Total Matches", class_="kpi-label"),
@@ -561,6 +485,7 @@ app_ui = ui.page_fluid(
                             class_="kpi-row",
                         ),
 
+                        # Top charts
                         ui.div(
                             ui.div(
                                 ui.div("Goals Scored vs Goals Conceded", class_="chart-title"),
@@ -577,6 +502,7 @@ app_ui = ui.page_fluid(
                             class_="chart-row-top",
                         ),
 
+                        # Bottom charts
                         ui.div(
                             ui.div(
                                 ui.div("Average Goals Scored by Season Period", class_="chart-title"),
@@ -604,9 +530,11 @@ app_ui = ui.page_fluid(
             ),
         ),
 
+        # ───────── AI EXPLORER TAB ─────────
         ui.nav_panel(
             "AI Explorer",
             ui.div(
+                # AI Sidebar
                 ui.div(
                     ui.div("🤖 AI Filter", class_="sidebar-title"),
                     ui.p(
@@ -624,6 +552,7 @@ app_ui = ui.page_fluid(
                     class_="sidebar ai-sidebar",
                 ),
 
+                # AI Results
                 ui.div(
                     ui.div(
                         ui.output_ui("ai_title"),
@@ -663,6 +592,7 @@ app_ui = ui.page_fluid(
         ),
     ),
 
+    # Footer
     ui.div(
         ui.div(
             ui.p("EPL Performance Dashboard : Interactive exploration of team results."),
@@ -679,6 +609,7 @@ app_ui = ui.page_fluid(
         ),
     ),
 
+    # Reset filters JS
     ui.tags.script(f"""
 document.addEventListener('DOMContentLoaded', function(){{
     const btn = document.getElementById('btn_reset');
@@ -706,244 +637,90 @@ document.addEventListener('DOMContentLoaded', function(){{
 """),
 )
 
-# Server
+
+# SERVER LOGIC
+
+# Track last logged interaction to avoid duplicate logging
+_last_logged_interaction = None
+
+
 def server(input, output, session):
+    """Main server logic."""
+    global _last_logged_interaction
+
+    # Initialize QueryChat server
     qc_vals = qc.server()
-    
+
+    # REACTIVE EFFECTS (Side effects like logging)
     @reactive.effect
     @reactive.event(input.input_team)
     def _update_seasons_for_team():
+        """Update available seasons when team changes."""
         team = input.input_team()
         available = TEAM_SEASONS.get(team, ALL_SEASONS)
-        # Keep current season if valid, otherwise pick the latest available
         current_season = input.input_season()
         selected = current_season if current_season in available else available[-1]
         ui.update_select("input_season", choices=available, selected=selected)
-        
-    @output
-    @render.ui
-    def ai_title():
-        df = qc_vals.df()
-        title = qc_vals.title() or "All EPL matches"
-        if df.empty and qc_vals.title():
-            return ui.div(
-                ui.div(title, style="font-size:18px; font-weight:700; margin-bottom:6px;"),
-                ui.div(
-                    "⚠️ No matches found for this query. The charts below are empty. Try refining your question.",
-                    style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; color:#856404;"
-                )
-            )
-        return ui.div(title, style="font-size:18px; font-weight:700;")
 
-    @output
-    @render.data_frame
-    def ai_table():
-        return render.DataGrid(qc_vals.df(), width="100%")
-
-    @output
-    @render.data_frame
-    def out_logs():
-        df = read_recent_logs(20)
+    @reactive.effect
+    def _log_ai_interactions():
+        """Log AI query interactions to Google Sheets or CSV (NO UI RENDERING)."""
+        global _last_logged_interaction
         try:
+            df = qc_vals.df()
             if df is None or df.empty:
-                return render.DataGrid(pd.DataFrame(columns=["Timestamp", "Query", "Response"]), width="100%")
-            # Normalize column names and order
-            cols = list(df.columns)
-            mapping = {}
-            for c in cols:
-                lc = c.lower()
-                if lc == "timestamp" or lc == "time":
-                    mapping[c] = "Timestamp"
-                elif lc in ("query", "question", "prompt"):
-                    mapping[c] = "Query"
-                elif lc in ("response", "answer"):
-                    mapping[c] = "Response"
-            df = df.rename(columns=mapping)
-            # Ensure required columns exist
-            for required in ["Timestamp", "Query", "Response"]:
-                if required not in df.columns:
-                    df[required] = ""
-            df = df[["Timestamp", "Query", "Response"]]
-            return render.DataGrid(df, width="100%")
-        except Exception:
-            return render.DataGrid(pd.DataFrame(columns=["Timestamp", "Query", "Response"]) , width="100%")
+                return
 
-    @output
-    @render.plot
-    def ai_plot_result():
-        df = qc_vals.df().copy()
-
-        fig, ax = plt.subplots(figsize=(5, 3.5))
-        fig.patch.set_facecolor("#fff")
-        ax.set_facecolor("#fff")
-
-        if df.empty:
-            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
-            ax.axis("off")
-            return fig
-
-        counts = df["Result"].value_counts()
-
-        bars = ax.bar(counts.index, counts.values, color=C_HOME, zorder=3)
-        ax.set_ylabel("Count", fontsize=9, labelpad=8)
-        ax.set_xlabel("Result", fontsize=9, labelpad=8)
-        # position the x-label a bit lower so it is not clipped by the card edge
-        try:
-            ax.xaxis.set_label_coords(0.5, -0.12)
-        except Exception:
-            pass
-        ax.spines[["top", "right"]].set_visible(False)
-        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
-        ax.set_axisbelow(True)
-        # make x-tick labels slightly smaller and add padding to avoid clipping
-        ax.tick_params(axis="x", labelrotation=0, labelsize=8, pad=10)
-        ax.tick_params(axis="y", labelsize=8, pad=6)
-        # ensure tick labels are not clipped by the axes box
-        try:
-            for lbl in ax.get_xticklabels() + ax.get_yticklabels():
-                lbl.set_clip_on(False)
-        except Exception:
-            pass
-
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                h + 0.02 * max(counts.values.max(), 1),
-                f"{int(h)}",
-                ha="center",
-                va="bottom",
-                fontsize=8,
-                fontweight="600",
-                clip_on=False,
-            )
-
-    
-        fig.tight_layout(pad=0.6)
-        try:
-            fig.subplots_adjust(left=0.20, right=0.98, top=0.86, bottom=0.28)
+            title = ""
             try:
-                ax.xaxis.set_label_coords(0.5, -0.22)
+                title = qc_vals.title() or ""
             except Exception:
                 pass
-            ax.margins(0)
-            pos = ax.get_position()
-            new_y0 = max(pos.y0 - 0.09, 0.01)
-            new_height = max(pos.height * 0.92, 0.2)
-            ax.set_position([pos.x0, new_y0, pos.width, new_height])
+
+            if not title.strip():
+                return
+
+            n = len(df)
+            cols = ",".join(list(df.columns)[:6]) if not df.empty else ""
+            response_summary = f"returned {n} rows; cols: {cols}"
+            ts = datetime.datetime.utcnow().isoformat()
+
+            pair = (title, response_summary)
+            if pair != _last_logged_interaction:
+                try:
+                    log_interaction(title, response_summary, ts)
+                    _last_logged_interaction = pair
+                except Exception as e:
+                    print(f"ERROR logging AI interaction: {e}")
         except Exception:
             pass
-        return fig
-
-    @output
-    @render.plot
-    def ai_plot_goals():
-        df = qc_vals.df().copy()
-
-        fig, ax = plt.subplots(figsize=(5, 3.5))
-        fig.patch.set_facecolor("#fff")
-        ax.set_facecolor("#fff")
-
-        if df.empty:
-            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
-            ax.axis("off")
-            return fig
-
-        labels = ["Home Goals", "Away Goals"]
-        vals = [
-            df["FullTimeHomeGoals"].mean(),
-            df["FullTimeAwayGoals"].mean()
-        ]
-
-        bars = ax.bar(labels, vals, zorder=3)
-        ax.set_ylabel("Average Goals", fontsize=9)
-        ax.set_xlabel("")
-        ax.spines[["top", "right"]].set_visible(False)
-        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
-        ax.set_axisbelow(True)
-        ax.tick_params(axis="both", labelsize=8)
-
-        ylim_top = max(vals + [1]) * 1.35
-        ax.set_ylim(0, ylim_top)
-
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                h + ylim_top * 0.02,
-                f"{h:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=8,
-                fontweight="600",
-            )
-
-        fig.tight_layout(pad=0.8)
-        return fig
-
-    @output
-    @render.plot
-    def ai_plot_season():
-        df = qc_vals.df().copy()
-
-        fig, ax = plt.subplots(figsize=(5, 3.5))
-        fig.patch.set_facecolor("#fff")
-        ax.set_facecolor("#fff")
-
-        if df.empty:
-            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
-            ax.axis("off")
-            return fig
-
-        counts = df["Season"].value_counts().sort_index()
-
-        bars = ax.bar(counts.index.astype(str), counts.values, zorder=3)
-        ax.set_ylabel("Matches", fontsize=9)
-        ax.set_xlabel("Season", fontsize=9)
-        ax.spines[["top", "right"]].set_visible(False)
-        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
-        ax.set_axisbelow(True)
-        ax.tick_params(axis="x", labelrotation=45, labelsize=8)
-        ax.tick_params(axis="y", labelsize=8)
-
-        fig.tight_layout(pad=0.8)
-        return fig
 
     @reactive.effect
     @reactive.event(input.ai_reset)
     def _reset_ai():
+        """Reset AI filters."""
         qc_vals.sql.set("")
         qc_vals.title.set(None)
 
-    @render.download(filename="querychat_filtered_epl.csv")
-    def download_ai_data():
-        yield qc_vals.df().to_csv(index=False)
-
-    # LAZY LOADING
+    # REACTIVE CALCULATIONS
     @reactive.calc
     def matches_filtered():
-        """
-        Build ibis filter expression from inputs, execute only filtered rows.
-        This ensures ALL filtering happens before rows enter pandas DataFrame.
-        """
+        """Filter matches based on inputs using Ibis lazy evaluation."""
         team = input.input_team()
         season = input.input_season()
         result = input.input_result()
-        
-        # Build filter expression (lazy, not executed yet)
+
         expr = filter_matches_ibis(team, season, result)
-        
-        # Execute to get pandas DataFrame (only filtered rows loaded)
         mf = expr.execute()
-        
-        # Add team-centric derived columns (Home vs Away view)
+
         if not mf.empty:
             mf = get_team_matches(mf, team)
-        
+
         return mf
 
     @reactive.calc
     def summary_home_away():
+        """Calculate Home vs Away statistics."""
         mf = matches_filtered()
         out = {}
         for venue in ("Home", "Away"):
@@ -959,8 +736,25 @@ def server(input, output, session):
                 )
         return out
 
+    @reactive.calc
+    def summary_period():
+        """Calculate statistics by season period."""
+        mf = assign_period(matches_filtered())
+        out = {}
+        for period in ("Early", "Mid", "Late"):
+            sub = mf[mf["period"] == period] if not mf.empty else pd.DataFrame()
+            if sub.empty:
+                out[period] = dict(avg_goals=0, n=0)
+            else:
+                out[period] = dict(
+                    avg_goals=sub["goals_for"].mean(),
+                    n=len(sub),
+                )
+        return out
+
+    # HELPER FUNCTIONS (used within server)
     def _metrics_for_season(season: str):
-        """Get metrics for a specific season (all teams)."""
+        """Get metrics for a specific season."""
         expr = tbl_all.filter(tbl_all.Season == season)
         df = expr.execute()
         team = input.input_team()
@@ -975,6 +769,7 @@ def server(input, output, session):
         )
 
     def _pct_change(curr, prev, abs_unit: str = ""):
+        """Calculate percentage change with formatting."""
         if prev == 0 or prev is None:
             return None
         try:
@@ -997,24 +792,30 @@ def server(input, output, session):
             style="margin-left:6px;",
         )
 
-    @reactive.calc
-    def summary_period():
-        mf = assign_period(matches_filtered())
-        out = {}
-        for period in ("Early", "Mid", "Late"):
-            sub = mf[mf["period"] == period] if not mf.empty else pd.DataFrame()
-            if sub.empty:
-                out[period] = dict(avg_goals=0, n=0)
-            else:
-                out[period] = dict(
-                    avg_goals=sub["goals_for"].mean(),
-                    n=len(sub),
-                )
-        return out
+    def _style_ax(ax):
+        """Apply consistent styling to matplotlib axes."""
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
+        ax.set_axisbelow(True)
+        ax.tick_params(axis="both", labelsize=8)
 
+    def _bar_labels(ax, bars):
+        """Add labels above bars in matplotlib charts."""
+        ylim = ax.get_ylim()
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + (ylim[1] - ylim[0]) * 0.02,
+                f"{h:.1f}",
+                ha="center", va="bottom", fontsize=8, fontweight="600",
+            )
+
+    # OUTPUTS (UI Rendering - NO SIDE EFFECTS)
     @output
     @render.ui
     def data_context_description():
+        """Render the data context description."""
         try:
             team = input.input_team()
         except Exception:
@@ -1056,6 +857,7 @@ def server(input, output, session):
     @output
     @render.ui
     def out_kpi_total():
+        """Render total matches KPI."""
         season = input.input_season()
         curr = _metrics_for_season(season)["n"]
         prev = None
@@ -1064,7 +866,7 @@ def server(input, output, session):
             if idx > 0:
                 prev = ALL_SEASONS[idx - 1]
         except Exception:
-            prev = None
+            pass
         prev_n = _metrics_for_season(prev)["n"] if prev else 0
         comp = _pct_change(curr, prev_n)
         comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
@@ -1076,6 +878,7 @@ def server(input, output, session):
     @output
     @render.ui
     def out_kpi_winrate():
+        """Render win rate KPI."""
         season = input.input_season()
         curr = _metrics_for_season(season)["win_rate"]
         prev = None
@@ -1084,7 +887,7 @@ def server(input, output, session):
             if idx > 0:
                 prev = ALL_SEASONS[idx - 1]
         except Exception:
-            prev = None
+            pass
         prev_val = _metrics_for_season(prev)["win_rate"] if prev else 0.0
         comp = _pct_change(curr, prev_val)
         comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
@@ -1096,6 +899,7 @@ def server(input, output, session):
     @output
     @render.ui
     def out_kpi_goals_scored():
+        """Render average goals scored KPI."""
         season = input.input_season()
         curr = _metrics_for_season(season)["avg_goals_for"]
         prev = None
@@ -1104,7 +908,7 @@ def server(input, output, session):
             if idx > 0:
                 prev = ALL_SEASONS[idx - 1]
         except Exception:
-            prev = None
+            pass
         prev_val = _metrics_for_season(prev)["avg_goals_for"] if prev else 0.0
         comp = _pct_change(curr, prev_val)
         comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
@@ -1116,6 +920,7 @@ def server(input, output, session):
     @output
     @render.ui
     def out_kpi_goals_conceded():
+        """Render average goals conceded KPI."""
         season = input.input_season()
         curr = _metrics_for_season(season)["avg_goals_against"]
         prev = None
@@ -1124,7 +929,7 @@ def server(input, output, session):
             if idx > 0:
                 prev = ALL_SEASONS[idx - 1]
         except Exception:
-            prev = None
+            pass
         prev_val = _metrics_for_season(prev)["avg_goals_against"] if prev else 0.0
         comp = _pct_change(curr, prev_val)
         comp_ui = comp if comp is not None else ui.span("— vs previous season", class_="kpi-compare")
@@ -1133,26 +938,38 @@ def server(input, output, session):
             comp_ui,
         )
 
-    def _style_ax(ax):
-        ax.spines[["top", "right"]].set_visible(False)
-        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
-        ax.set_axisbelow(True)
-        ax.tick_params(axis="both", labelsize=8)
+    @output
+    @render.ui
+    def out_active_filters():
+        """Render active filter chips (PURE RENDERING ONLY)."""
+        parts = []
+        try:
+            team = input.input_team()
+            if team:
+                parts.append(ui.span(f"Team: {team}", class_="chip"))
+        except Exception:
+            pass
+        try:
+            season = input.input_season()
+            if season:
+                parts.append(ui.span(f"Season: {season}", class_="chip"))
+        except Exception:
+            pass
+        try:
+            result = input.input_result()
+            if result and result != "All":
+                parts.append(ui.span(f"Result: {result}", class_="chip"))
+        except Exception:
+            pass
 
-    def _bar_labels(ax, bars):
-        ylim = ax.get_ylim()
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                h + (ylim[1] - ylim[0]) * 0.02,
-                f"{h:.1f}",
-                ha="center", va="bottom", fontsize=8, fontweight="600",
-            )
+        if not parts:
+            return ui.div(ui.span("No active filters", style="color:#9ca3af; font-size:12px;"))
+        return ui.div(*parts, class_="active-filters")
 
     @output
     @render.plot
     def out_goals_home_away():
+        """Render Home vs Away goals chart."""
         s = summary_home_away()
         venues = ["Home", "Away"]
         x = range(len(venues))
@@ -1189,6 +1006,7 @@ def server(input, output, session):
     @output
     @render.plot
     def out_winrate_home_away():
+        """Render Home vs Away win rate chart."""
         s = summary_home_away()
         venues = ["Home", "Away"]
         vals = [s[v]["win_rate"] for v in venues]
@@ -1222,7 +1040,7 @@ def server(input, output, session):
     @output
     @render.plot
     def out_goals_by_period():
-
+        """Render goals by season period chart."""
         mf = assign_period(matches_filtered())
 
         periods = ["Early", "Mid", "Late"]
@@ -1273,12 +1091,12 @@ def server(input, output, session):
     @output
     @render.data_frame
     def out_matches_table():
+        """Render matches table."""
         mf = assign_period(matches_filtered()).copy()
-        
-        # Handle empty DataFrame
+
         if mf.empty:
             return render.DataGrid(pd.DataFrame(), width="100%")
-        
+
         mf["MatchDate"] = mf["MatchDate"].dt.strftime("%Y-%m-%d")
         display = mf[[
             "MatchDate", "HomeTeam", "AwayTeam",
@@ -1299,42 +1117,152 @@ def server(input, output, session):
         })
         return render.DataGrid(display, width="100%")
 
+    # AI EXPLORER OUTPUTS
     @output
     @render.ui
-    def out_active_filters():
-        parts = []
-        try:
-            team = input.input_team()
-        except Exception:
-            team = None
-        try:
-            season = input.input_season()
-        except Exception:
-            season = None
+    def ai_title():
+        """Render AI title with error handling."""
+        df = qc_vals.df()
+        title = qc_vals.title() or "All EPL matches"
+        if df.empty and qc_vals.title():
+            return ui.div(
+                ui.div(title, style="font-size:18px; font-weight:700; margin-bottom:6px;"),
+                ui.div(
+                    "⚠️ No matches found for this query. The charts below are empty. Try refining your question.",
+                    style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; color:#856404;"
+                )
+            )
+        return ui.div(title, style="font-size:18px; font-weight:700;")
 
-        # Build UI chips for current filters and AI query summary (no logging here)
-        try:
-            if team:
-                parts.append(ui.span(team, class_="chip"))
-            if season:
-                parts.append(ui.span(season, class_="chip"))
-            # try to show short AI title/summary if available
-            try:
-                title = qc_vals.title() or ""
-            except Exception:
-                title = ""
-            try:
-                df = qc_vals.df()
-                n = len(df) if df is not None else 0
-            except Exception:
-                n = 0
-            if title:
-                parts.append(ui.span(f"Query: {title} — {n} rows", class_="chip"))
-        except Exception:
-            return ui.div()
+    @output
+    @render.data_frame
+    def ai_table():
+        """Render AI filtered matches table."""
+        return render.DataGrid(qc_vals.df(), width="100%")
 
-        return ui.div(*parts, class_="active-filters")
-    # expose other things if needed
-    return locals()
+    @output
+    @render.plot
+    def ai_plot_result():
+        """Render AI result distribution chart."""
+        df = qc_vals.df().copy()
 
-app = App(app_ui, server_with_logging)
+        fig, ax = plt.subplots(figsize=(5, 3.5))
+        fig.patch.set_facecolor("#fff")
+        ax.set_facecolor("#fff")
+
+        if df.empty:
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
+            ax.axis("off")
+            return fig
+
+        counts = df["Result"].value_counts()
+
+        bars = ax.bar(counts.index, counts.values, zorder=3)
+        ax.set_ylabel("Count", fontsize=9)
+        ax.set_xlabel("")
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
+        ax.set_axisbelow(True)
+        ax.tick_params(axis="x", labelrotation=10, labelsize=8)
+        ax.tick_params(axis="y", labelsize=8)
+
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + 0.02 * max(counts.values.max(), 1),
+                f"{int(h)}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                fontweight="600",
+            )
+
+        fig.tight_layout(pad=0.8)
+        return fig
+
+    @output
+    @render.plot
+    def ai_plot_goals():
+        """Render AI average goals chart."""
+        df = qc_vals.df().copy()
+
+        fig, ax = plt.subplots(figsize=(5, 3.5))
+        fig.patch.set_facecolor("#fff")
+        ax.set_facecolor("#fff")
+
+        if df.empty:
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
+            ax.axis("off")
+            return fig
+
+        labels = ["Home Goals", "Away Goals"]
+        vals = [
+            df["FullTimeHomeGoals"].mean(),
+            df["FullTimeAwayGoals"].mean()
+        ]
+
+        bars = ax.bar(labels, vals, zorder=3)
+        ax.set_ylabel("Average Goals", fontsize=9)
+        ax.set_xlabel("")
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
+        ax.set_axisbelow(True)
+        ax.tick_params(axis="both", labelsize=8)
+
+        ylim_top = max(vals + [1]) * 1.35
+        ax.set_ylim(0, ylim_top)
+
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + ylim_top * 0.02,
+                f"{h:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                fontweight="600",
+            )
+
+        fig.tight_layout(pad=0.8)
+        return fig
+
+    @output
+    @render.plot
+    def ai_plot_season():
+        """Render AI matches by season chart."""
+        df = qc_vals.df().copy()
+
+        fig, ax = plt.subplots(figsize=(5, 3.5))
+        fig.patch.set_facecolor("#fff")
+        ax.set_facecolor("#fff")
+
+        if df.empty:
+            ax.text(0.5, 0.5, "No matches found for the current AI filter.\nTry a different query.", ha="center", va="center", fontsize=10, color="#6b7280")
+            ax.axis("off")
+            return fig
+
+        counts = df["Season"].value_counts().sort_index()
+
+        bars = ax.bar(counts.index.astype(str), counts.values, zorder=3)
+        ax.set_ylabel("Matches", fontsize=9)
+        ax.set_xlabel("Season", fontsize=9)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.yaxis.grid(True, linestyle="--", linewidth=0.6, alpha=0.45, zorder=0)
+        ax.set_axisbelow(True)
+        ax.tick_params(axis="x", labelrotation=45, labelsize=8)
+        ax.tick_params(axis="y", labelsize=8)
+
+        fig.tight_layout(pad=0.8)
+        return fig
+
+    @render.download(filename="querychat_filtered_epl.csv")
+    def download_ai_data():
+        """Download AI filtered data as CSV."""
+        yield qc_vals.df().to_csv(index=False)
+
+
+
+# APP INITIALIZATION
+app = App(app_ui, server)

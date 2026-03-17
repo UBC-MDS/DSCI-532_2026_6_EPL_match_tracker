@@ -53,7 +53,17 @@ conda env create -f environment.yml
 conda activate dsci532
 ```
 
-### 3. Set up environment variables
+### 3. One-time Setup: Create the Parquet Data File
+
+The app uses a parquet file for efficient data loading. On first setup, convert the raw CSV to parquet:
+
+```bash
+python -c "import pandas as pd; df = pd.read_csv('data/raw/epl_final.csv'); df.to_parquet('data/processed/epl_final.parquet')"
+```
+
+This creates `data/processed/epl_final.parquet` which the dashboard loads at startup. You only need to run this once, unless the raw CSV is updated.
+
+### 4. Set up environment variables
 
 This app uses the Anthropic API for AI-powered features. Create a `.env` file in the root of the repository:
 
@@ -69,7 +79,7 @@ ANTHROPIC_API_KEY='your-api-key-here'
 
 > **Note:** The `.env` file is listed in `.gitignore` and should **never** be committed to the repository.
 
-### 4. Run the app locally
+### 5. Run the app locally
 
 ```bash
 shiny run src/app.py
@@ -77,7 +87,7 @@ shiny run src/app.py
 
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
-### 5. Run the tests
+### 6. Run the tests
 
 Unit tests (pytest):
 ```bash
