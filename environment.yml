@@ -6,6 +6,9 @@ dependencies:
   - python=3.11
   - pandas=2.2.2
   - matplotlib=3.10.6
+  - jupyter
+  - seaborn
+  - shiny   
   - pip
   - pip:
     - shiny
@@ -18,4 +21,5 @@ dependencies:
     - pytest
     - pytest-playwright
     - playwright
-prefix: /Users/raymondwang/miniforge3/envs/dsci532
+    - gspread
+    - google-auth

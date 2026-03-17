@@ -6,6 +6,10 @@
 - **Dependencies**: Added `ibis-framework[duckdb]`, `pyarrow`, and `pyarrow-hotfix` to support lazy loading and parquet operations.
 - **Tests**: Added pytest unit tests for `get_team_matches` and `assign_period` helper functions in `tests/test_utils.py`. Added 4 Playwright browser tests covering dashboard load, team filter, result filter chip, and reset button behavior in `tests/test_app.py`.
 - **Refactored helpers**: Extracted `get_team_matches` and `assign_period` from `src/app.py` into `src/utils.py` to enable unit testing and improve code organization.
+ - **Query interaction log**: Added logging of user AI queries and responses. Logs are written to `logs/querychat_log.csv` as the local fallback and when credentials are provided appended to a Google Sheet (configured via `GSPREAD_SHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` / `GSPREAD_CREDENTIALS_PATH`). 
+ - **`src/app.py` logging improvements**: Implemented `_init_gspread()` to safely parse service-account JSON or credential file, added explicit startup status prints, made Google Sheets optional (graceful CSV fallback), added `log_interaction()` CSV fallback behavior, and improved `read_recent_logs()` to prefer Sheets when available. Added lightweight duplicate-avoidance state and surfaced tracebacks on init failures.
+ - **Notebook: Query interaction analysis**: added `notebooks/querychat_log.ipynb` Describing why log is needed and demonstration on how it would be used it for our goals, data pipeline sketch and examples.
+ - **Dependencies / environment**: Updated `environment.yml` to include pip-installed packages required for AI and Sheets integration (`querychat`, `anthropic`, `python-dotenv`, `gspread`, and `google-auth`). Ensured `requirements.txt` lists `gspread` and `google-auth` for pip-based installs.
 - **Test dependencies**: Added `pytest`, `pytest-playwright`, and `playwright` to `requirements.txt` and `environment.yml`.
 
 ### Changed

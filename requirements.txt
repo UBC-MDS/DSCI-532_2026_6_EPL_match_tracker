@@ -4,9 +4,12 @@ matplotlib==3.10.6
 querychat
 anthropic
 python-dotenv
+gspread
+google-auth
 ibis-framework[duckdb]
 pyarrow
 pyarrow-hotfix
 pytest
 pytest-playwright
 playwright
+
