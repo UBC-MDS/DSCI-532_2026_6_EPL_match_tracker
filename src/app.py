@@ -610,30 +610,16 @@ app_ui = ui.page_fluid(
     ),
 
     # Reset filters JS
-    ui.tags.script(f"""
-document.addEventListener('DOMContentLoaded', function(){{
+    ui.tags.script("""
+document.addEventListener('DOMContentLoaded', function(){
     const btn = document.getElementById('btn_reset');
     if (!btn) return;
 
-    btn.addEventListener('click', function() {{
+    btn.addEventListener('click', function() {
         btn.disabled = true;
-
-        Shiny.setInputValue('input_team', 'Arsenal', {{priority: 'event'}});
-        Shiny.setInputValue('input_season', '{DEFAULT_SEASON}', {{priority: 'event'}});
-
-        const selTeam = document.getElementById('input_team');
-        if (selTeam) {{ selTeam.value = 'Arsenal'; selTeam.dispatchEvent(new Event('input')); selTeam.dispatchEvent(new Event('change')); }}
-        const selSeason = document.getElementById('input_season');
-        if (selSeason) {{ selSeason.value = '{DEFAULT_SEASON}'; selSeason.dispatchEvent(new Event('input')); selSeason.dispatchEvent(new Event('change')); }}
-
-        setTimeout(function() {{
-            Shiny.setInputValue('input_result', 'All', {{priority: 'event'}});
-            const sel = document.getElementById('input_result');
-            if (sel) {{ sel.value = 'All'; sel.dispatchEvent(new Event('input')); sel.dispatchEvent(new Event('change')); }}
-            setTimeout(function(){{ btn.disabled = false; }}, 200);
-        }}, 250);
-    }});
-}});
+        setTimeout(function(){ btn.disabled = false; }, 300);
+    });
+});
 """),
 )
 
@@ -661,7 +647,15 @@ def server(input, output, session):
         current_season = input.input_season()
         selected = current_season if current_season in available else available[-1]
         ui.update_select("input_season", choices=available, selected=selected)
-
+        
+    @reactive.effect
+    @reactive.event(input.btn_reset)
+    def _reset_filters():
+        """Reset all filters to defaults when reset button is clicked."""
+        ui.update_select("input_team", selected="Arsenal")
+        ui.update_select("input_season", selected=DEFAULT_SEASON)
+        ui.update_select("input_result", selected="All")
+        
     @reactive.effect
     def _log_ai_interactions():
         """Log AI query interactions to Google Sheets or CSV (NO UI RENDERING)."""
@@ -1262,7 +1256,21 @@ def server(input, output, session):
         """Download AI filtered data as CSV."""
         yield qc_vals.df().to_csv(index=False)
 
-
+    @output
+    @render.data_frame
+    def out_logs():
+        """Render recent AI query logs."""
+        logs_df = read_recent_logs(n=50)
+        if logs_df.empty:
+            return render.DataGrid(
+                pd.DataFrame({
+                    "Timestamp": ["No logs yet"],
+                    "Query": ["—"],
+                    "Response": ["Run some AI queries to see them here"]
+                }),
+                width="100%"
+            )
+        return render.DataGrid(logs_df, width="100%")
 
 # APP INITIALIZATION
 app = App(app_ui, server)
