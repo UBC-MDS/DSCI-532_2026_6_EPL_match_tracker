@@ -16,7 +16,7 @@ The EPL Match Tracker is an interactive dashboard developed by DSCI 532 Group 6 
 ---
 
 ## Demo
-![Demo](img/demo.gif)
+![Demo](img/m4_demo.gif)
 
 ---
 
