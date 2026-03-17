@@ -19,6 +19,10 @@
 - **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
 - **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
 - **README**: Updated with instructions to run unit tests and Playwright tests locally.
+- **Final UI & Chart polish:** Adjusted AI Explorer sidebar width to 400px, reduced font sizes for the AI chat and table/chart cards, removed two exploratory AI charts from the AI Explorer view, and removed sample-size annotations `(n=...)` from dashboard x-axis labels for cleaner presentation.
+- **Match Results chart (AI Explorer):** Reworked layout and plotting so the bar chart fills its card, increased margins and tweaked subplot positioning to avoid clipped axes and labels; bar color standardized to `C_HOME` (`#472A4B`).
+- **Win Rate visualization:** Replaced the Home/Away win-rate bar chart with two semicircular gauges that preserve the original `C_HOME`/`C_AWAY` colors, fill from the left, and display percentages with one decimal place.
+- **Season normalization:** Normalized season formats (e.g., `2024-25` → `2024/25`) so AI-derived filters match dataset `Season` values and return correct results.
 
 ### Fixed
 - **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
