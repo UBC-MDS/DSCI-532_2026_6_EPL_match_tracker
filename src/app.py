@@ -216,6 +216,13 @@ qc = QueryChat(
 )
 
 # Load a local JPEG as a data-URI so the header doesn't rely on static file serving.
+    
+try:
+    from app_ui import app_ui  
+    from app_server import server as app_server  
+    app_defined_externally = True
+except Exception:
+    app_defined_externally = False
 def _load_header_datauri():
     candidates = [
         os.path.join("img", "stadium.jpg"),
@@ -289,37 +296,6 @@ html, body, .container-fluid {
     background: #f4f6f9;
 }
 
-... (CSS omitted here in the source file for brevity) ...
-""")
-
-try:
-    from app_ui import app_ui  
-    from app_server import server as app_server  
-    app_defined_externally = True
-except Exception:
-    app_defined_externally = False
-
-if not app_defined_externally:
-    try:
-        with open(os.path.join(os.path.dirname(__file__), "_ui_server_fragment.py"), "r", encoding="utf-8") as fh:
-            fragment = fh.read()
-        exec(fragment, globals())
-    except Exception:
-        app_ui = ui.page_fluid(ui.h1("EPL Performance Dashboard (minimal)"))
-        def server(input, output, session):
-            pass
-
-def server_with_logging(input, output, session):
-    qc_vals = qc.server()
-
-    if 'server' in globals():
-        try:
-            server(input, output, session)
-        except Exception:
-            pass
-
-    @reactive.effect
-    def _log_qc_usage():
 .dashboard-wrap {
     display: flex;
     flex-direction: column;
@@ -422,6 +398,29 @@ def server_with_logging(input, output, session):
 .app-footer{ margin-top:8px; padding:10px 16px; text-align:left; color:#6b7280; font-size:13px; display:flex; gap:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
 .app-footer p{ margin:0; }
 """)
+
+if not app_defined_externally:
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "_ui_server_fragment.py"), "r", encoding="utf-8") as fh:
+            fragment = fh.read()
+        exec(fragment, globals())
+    except Exception:
+        app_ui = ui.page_fluid(ui.h1("EPL Performance Dashboard (minimal)"))
+        def server(input, output, session):
+            pass
+
+def server_with_logging(input, output, session):
+    qc_vals = qc.server()
+
+    if 'server' in globals():
+        try:
+            server(input, output, session)
+        except Exception:
+            pass
+
+    @reactive.effect
+    def _log_qc_usage():
+        pass
 
 # ── Hero Header ────────────────────────────────────────────────────────────────
 def hero_header():
