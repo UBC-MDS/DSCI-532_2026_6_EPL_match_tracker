@@ -17,6 +17,7 @@
 - **Filtering Logic**: Introduced `filter_matches_ibis()` function to build filter expressions at the database level before execution. All team, season, and result filters now apply via ibis before rows enter pandas DataFrames.
 - **`matches_filtered()` Reactive Calc**: Updated to use lazy ibis filtering instead of pandas slicing. Filters are now applied before `.execute()` is called.
 - **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
+- **Chatbot Appearance**: Updated the AI chatbot interface to use a fixed height container with internal scrolling. This prevents the chat panel from expanding as messages are added and improves overall layout stability and usability.
 - **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
 - **README**: Updated with instructions to run unit tests and Playwright tests locally.
 
