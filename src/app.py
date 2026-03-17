@@ -24,7 +24,7 @@ df_meta = tbl_all.execute()
 
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
-# DEFAULT_SEASON = ALL_SEASONS[-1] if ALL_SEASONS else "2024"
+
 # Build a mapping: team -> sorted list of seasons where that team has data
 TEAM_SEASONS = {}
 for team in ALL_TEAMS:
@@ -155,6 +155,46 @@ html, body, .container-fluid {
 .sidebar label{ font-size:12px; font-weight:600; color:#374151; }
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
 .btn-reset{ padding:6px 10px; font-size:12px; border-radius:6px; background:#f3f4f6; color:#111827; }
+
+/* AI chat fixed container */
+.ai-sidebar {
+    height: 720px;
+    overflow: hidden;
+}
+
+.ai-chat-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Make the querychat widget fill the available space */
+.ai-chat-shell > * {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Common querychat/container wrappers */
+.ai-chat-shell .querychat,
+.ai-chat-shell .querychat-container,
+.ai-chat-shell .chat-container,
+.ai-chat-shell [class*="querychat"],
+.ai-chat-shell [class*="chat"] {
+    min-height: 0;
+}
+
+/* Common message areas: scroll inside instead of growing box */
+.ai-chat-shell .messages,
+.ai-chat-shell .chat-messages,
+.ai-chat-shell .message-list,
+.ai-chat-shell [class*="messages"],
+.ai-chat-shell [class*="message-list"] {
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+}
 
 /* Header banner image */
 .header-banner-img{
@@ -313,11 +353,14 @@ app_ui = ui.page_fluid(
                         "Try asking: show only Arsenal matches, only draws, Liverpool away wins, or matches where the home team scored at least 4 goals.",
                         style="font-size:12px; color:#6b7280;"
                     ),
-                    qc.ui(),
+                    ui.div(
+                        qc.ui(),
+                        class_="ai-chat-shell",
+                    ),
                     ui.hr(),
                     ui.input_action_button("ai_reset", "Reset AI filters", class_="btn-reset"),
                     ui.download_button("download_ai_data", "Download filtered data"),
-                    class_="sidebar",
+                    class_="sidebar ai-sidebar",
                 ),
 
                 ui.div(
