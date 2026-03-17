@@ -12,3 +12,4 @@ pyarrow-hotfix
 pytest
 pytest-playwright
 playwright
+
