@@ -1,5 +1,6 @@
 from shiny import App, ui, render, reactive
 import matplotlib.pyplot as plt
+from matplotlib.patches import Wedge
 import pandas as pd
 import json
 import sys
@@ -674,7 +675,7 @@ app_ui = ui.page_fluid(
         ui.div(
             ui.p("EPL Performance Dashboard : Interactive exploration of team results."),
             ui.p([
-                "Authors: Omowunmi, Wenrui, Gurleen. ",
+                "Authors: Omowunmi, Wenrui, Gurleen, Ashifa. ",
                 ui.a(
                     "Repo",
                     href="https://github.com/UBC-MDS/DSCI-532_2026_6_EPL_match_tracker",
@@ -1207,21 +1208,35 @@ def server(input, output, session):
         venues = ["Home", "Away"]
         vals = [s[v]["win_rate"] for v in venues]
 
-        fig, ax = plt.subplots(figsize=(5, 3.5))
+        # Draw two semicircular 'moon' gauges side-by-side
+        fig, axes = plt.subplots(1, 2, figsize=(8, 3.5))
         fig.patch.set_facecolor("#fff")
-        ax.set_facecolor("#fff")
+        bg_color = "#e0e4ea"
 
-        bars = ax.bar(
-            venues,
-            vals,
-            color=[C_HOME, C_AWAY],
-            width=0.45, zorder=3,
-        )
-        ax.set_ylabel("Win Rate (%)", fontsize=9)
-        ax.set_ylim(0, max(vals + [1]) * 1.35)
-        _style_ax(ax)
-        _bar_labels(ax, bars)
-        fig.tight_layout(pad=0.8)
+        for ax, val, color, label in zip(axes, vals, [C_HOME, C_AWAY], venues):
+            ax.set_aspect("equal")
+            ax.axis("off")
+
+            # Background semicircle (upper half)
+            bg = Wedge((0, 0), 1.0, 0, 180, width=0.22, facecolor=bg_color, edgecolor="none", lw=0)
+            ax.add_patch(bg)
+
+            # Foreground arc representing the percentage (val is 0-100)
+            frac = max(0.0, min(float(val) / 100.0 if val is not None else 0.0, 1.0))
+            if frac > 0:
+                # Draw the foreground arc starting from the left side (180deg)
+                start_ang = 180 - 180 * frac
+                fg = Wedge((0, 0), 1.0, start_ang, 180, width=0.22, facecolor=color, edgecolor="none", lw=0)
+                ax.add_patch(fg)
+
+            # Percentage text and label below the semicircle
+            ax.text(0, -0.08, f"{(val or 0):.1f}%", ha="center", va="center", fontsize=14, fontweight="700", color=color)
+            ax.text(0, -0.32, label, ha="center", va="center", fontsize=10, color="#6b7280")
+
+            ax.set_xlim(-1.15, 1.15)
+            ax.set_ylim(-0.6, 1.05)
+
+        fig.tight_layout(pad=0.6)
         return fig
 
     @output
