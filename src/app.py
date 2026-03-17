@@ -81,18 +81,12 @@ def _init_gspread():
                 s = sa_json.strip()
                 if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
                     s = s[1:-1]
-                # If the JSON contains actual newline characters (from multiline .env),
-                # escape them so json.loads can parse the string values correctly.
-                # First normalize CRLF to LF, then escape real newlines into literal \n.
                 if '\r\n' in s:
-                    # contains escaped CRLF sequences, leave as-is
                     pass
                 # If actual newline characters are present, escape them
                 if '\n' not in s and '\\n' not in s and ('\r' in s or '\n' in s or '\r\n' in s):
                     s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
-                # Also handle the common case where env contains literal newlines
                 if '\n' in s and '\\n' not in s:
-                    # convert actual newlines to escaped sequences
                     s = s.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n')
                 creds_dict = _json.loads(s)
             except Exception as e:
@@ -195,7 +189,6 @@ except Exception:
 
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist())) if not df_meta.empty else []
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist()) if not df_meta.empty else []
-# Build a mapping: team -> sorted list of seasons where that team has data
 TEAM_SEASONS = {}
 for team in ALL_TEAMS:
     seasons = sorted(df_meta[(df_meta["HomeTeam"] == team) | (df_meta["AwayTeam"] == team)]["Season"].unique().tolist())
@@ -208,7 +201,6 @@ df_meta = tbl_all.execute()
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist()))
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist())
 
-# Build a mapping: team -> sorted list of seasons where that team has data
 TEAM_SEASONS = {}
 for team in ALL_TEAMS:
     seasons = sorted(df_meta[
@@ -222,7 +214,7 @@ DEFAULT_SEASON = TEAM_SEASONS["Arsenal"][-1] if TEAM_SEASONS.get("Arsenal") else
 DEFAULT_DATE_START = df_meta["MatchDate"].min() if not df_meta.empty else None
 DEFAULT_DATE_END = df_meta["MatchDate"].max() if not df_meta.empty else None
 
-# Anthropic QueryChat (use metadata dataframe for context)
+# Anthropic QueryChat 
 qc = QueryChat(df_meta, "epl_matches", client="anthropic/claude-haiku-4-5")
 
 # Header image helper
@@ -491,7 +483,7 @@ def server_with_logging(input, output, session):
             except Exception:
                 pass
 
-# ── Hero Header ────────────────────────────────────────────────────────────────
+# Hero Header 
 def hero_header():
     img_src = INLINE_HEADER_DATAURI if INLINE_HEADER_DATAURI else "/www/stadium.jpg"
     return ui.div(
@@ -519,7 +511,7 @@ def hero_header():
         style="position:relative; margin-bottom:20px;",
     )
 
-# ── UI ─────────────────────────────────────────────────────────────────────────
+# UI 
 app_ui = ui.page_fluid(
     page_style,
     hero_header(),
@@ -714,7 +706,7 @@ document.addEventListener('DOMContentLoaded', function(){{
 """),
 )
 
-# ── Server ─────────────────────────────────────────────────────────────────────
+# Server
 def server(input, output, session):
     qc_vals = qc.server()
     
@@ -826,24 +818,17 @@ def server(input, output, session):
                 clip_on=False,
             )
 
-        # Reduce padding and expand the axes to use the available card space.
-        # Also shift the axes down slightly so the y-axis and first-bar label are not clipped
+    
         fig.tight_layout(pad=0.6)
         try:
-            # increase vertical space and nudge the axes further down so the
-            # y-axis and first-bar label are clearly visible and chart is centered
-            # increase bottom margin so x-axis label and tick labels are visible
             fig.subplots_adjust(left=0.20, right=0.98, top=0.86, bottom=0.28)
-            # lower x-label further as an extra safeguard
             try:
                 ax.xaxis.set_label_coords(0.5, -0.22)
             except Exception:
                 pass
             ax.margins(0)
             pos = ax.get_position()
-            # nudge down by a larger fraction of the figure height
             new_y0 = max(pos.y0 - 0.09, 0.01)
-            # slightly reduce height so the axes remain inside the figure after nudging
             new_height = max(pos.height * 0.92, 0.2)
             ax.set_position([pos.x0, new_y0, pos.width, new_height])
         except Exception:
@@ -934,7 +919,7 @@ def server(input, output, session):
     def download_ai_data():
         yield qc_vals.df().to_csv(index=False)
 
-    # ────── LAZY LOADING: Filter at database level with ibis ──────────────────
+    # LAZY LOADING
     @reactive.calc
     def matches_filtered():
         """
@@ -1208,7 +1193,6 @@ def server(input, output, session):
         venues = ["Home", "Away"]
         vals = [s[v]["win_rate"] for v in venues]
 
-        # Draw two semicircular 'moon' gauges side-by-side
         fig, axes = plt.subplots(1, 2, figsize=(8, 3.5))
         fig.patch.set_facecolor("#fff")
         bg_color = "#e0e4ea"
@@ -1217,19 +1201,15 @@ def server(input, output, session):
             ax.set_aspect("equal")
             ax.axis("off")
 
-            # Background semicircle (upper half)
             bg = Wedge((0, 0), 1.0, 0, 180, width=0.22, facecolor=bg_color, edgecolor="none", lw=0)
             ax.add_patch(bg)
 
-            # Foreground arc representing the percentage (val is 0-100)
             frac = max(0.0, min(float(val) / 100.0 if val is not None else 0.0, 1.0))
             if frac > 0:
-                # Draw the foreground arc starting from the left side (180deg)
                 start_ang = 180 - 180 * frac
                 fg = Wedge((0, 0), 1.0, start_ang, 180, width=0.22, facecolor=color, edgecolor="none", lw=0)
                 ax.add_patch(fg)
 
-            # Percentage text and label below the semicircle
             ax.text(0, -0.08, f"{(val or 0):.1f}%", ha="center", va="center", fontsize=14, fontweight="700", color=color)
             ax.text(0, -0.32, label, ha="center", va="center", fontsize=10, color="#6b7280")
 
