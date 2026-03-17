@@ -398,6 +398,15 @@ html, body, .container-fluid {
     display:block;
 }
 
+/* Reduce font sizes for AI chat and filtered-match tables */
+.ai-chat-shell, .ai-chat-shell * {
+    font-size:13px;
+    line-height:1.25;
+}
+.table-card, .chart-card {
+    font-size:13px;
+}
+
 /* Charts */
 .charts-panel{ flex:1 1 0; display:flex; flex-direction:column; gap:12px; min-width:0; }
 .kpi-row { margin-bottom:12px; }
