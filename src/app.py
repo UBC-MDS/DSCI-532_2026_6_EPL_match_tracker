@@ -1,5 +1,6 @@
 from shiny import App, ui, render, reactive
 import matplotlib.pyplot as plt
+from matplotlib.patches import Wedge
 import pandas as pd
 import json
 import sys
@@ -80,6 +81,7 @@ def _init_gspread():
 
     try:
         if sa_json:
+            # Safer parsing: strip surrounding single/double quotes and normalize newlines
             try:
                 creds_dict = json.loads(sa_json)
             except Exception as e:
@@ -199,7 +201,6 @@ except Exception as e:
 ALL_TEAMS = sorted(set(df_meta["HomeTeam"].tolist() + df_meta["AwayTeam"].tolist())) if not df_meta.empty else []
 ALL_SEASONS = sorted(df_meta["Season"].unique().tolist()) if not df_meta.empty else []
 
-# Build a mapping: team -> sorted list of seasons where that team has data
 TEAM_SEASONS = {}
 for team in ALL_TEAMS:
     seasons = sorted(df_meta[
@@ -285,6 +286,7 @@ html, body, .container-fluid {
 /* Body and sidebar */
 .body-row { display:flex; gap:14px; align-items:stretch; }
 .sidebar { width:260px; flex-shrink:0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px; display:flex; flex-direction:column; gap:12px; align-self:stretch; }
+.sidebar.ai-sidebar { width:400px; }
 .sidebar-title{ font-size:14px; font-weight:700; color:#111827; }
 .sidebar label{ font-size:12px; font-weight:600; color:#374151; }
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
@@ -326,6 +328,15 @@ html, body, .container-fluid {
     object-fit:cover;
     border-radius:12px;
     display:block;
+}
+
+/* Reduce font sizes for AI chat and filtered-match tables */
+.ai-chat-shell, .ai-chat-shell * {
+    font-size:13px;
+    line-height:1.25;
+}
+.table-card, .chart-card {
+    font-size:13px;
 }
 
 /* Charts */
@@ -505,6 +516,7 @@ app_ui = ui.page_fluid(
                                 ui.output_data_frame("out_matches_table"),
                                 class_="table-card",
                             ),
+                            
                             class_="chart-row-bottom",
                         ),
 
@@ -533,6 +545,7 @@ app_ui = ui.page_fluid(
                         qc.ui(),
                         class_="ai-chat-shell",
                     ),
+                    
                     ui.hr(),
                     ui.input_action_button("ai_reset", "Reset AI filters", class_="btn-reset"),
                     ui.download_button("download_ai_data", "Download filtered data"),
@@ -562,20 +575,13 @@ app_ui = ui.page_fluid(
                         class_="chart-row-top",
                     ),
 
+                    
+
                     ui.div(
-                        ui.div(
-                            ui.div("Average Home vs Away Goals", class_="chart-title"),
-                            ui.div("Computed from filtered matches", class_="chart-subtitle"),
-                            ui.output_plot("ai_plot_goals", height="280px"),
-                            class_="chart-card",
-                        ),
-                        ui.div(
-                            ui.div("Matches by Season", class_="chart-title"),
-                            ui.div("Count of filtered matches per season", class_="chart-subtitle"),
-                            ui.output_plot("ai_plot_season", height="280px"),
-                            class_="chart-card",
-                        ),
-                        class_="chart-row-top",
+                        ui.div("Recent AI Queries", class_="chart-title"),
+                        ui.div("Latest AI queries and responses", class_="chart-subtitle"),
+                        ui.output_data_frame("out_logs"),
+                        class_="table-card",
                     ),
 
                     class_="charts-panel",
@@ -591,7 +597,7 @@ app_ui = ui.page_fluid(
         ui.div(
             ui.p("EPL Performance Dashboard : Interactive exploration of team results."),
             ui.p([
-                "Authors: Omowunmi, Wenrui, Gurleen. ",
+                "Authors: Omowunmi, Wenrui, Gurleen, Ashifa. ",
                 ui.a(
                     "Repo",
                     href="https://github.com/UBC-MDS/DSCI-532_2026_6_EPL_match_tracker",
@@ -985,7 +991,7 @@ def server(input, output, session):
         )
 
         ax.set_xticks(list(x))
-        ax.set_xticklabels([f"{v}\n(n={s[v]['n']})" for v in venues], fontsize=9)
+        ax.set_xticklabels([v for v in venues], fontsize=9)
         ax.set_ylabel("Avg Goals", fontsize=9)
         ax.set_ylim(0, max(
             [s[v]["avg_goals_for"] for v in venues] +
@@ -1005,21 +1011,30 @@ def server(input, output, session):
         venues = ["Home", "Away"]
         vals = [s[v]["win_rate"] for v in venues]
 
-        fig, ax = plt.subplots(figsize=(5, 3.5))
+        fig, axes = plt.subplots(1, 2, figsize=(8, 3.5))
         fig.patch.set_facecolor("#fff")
-        ax.set_facecolor("#fff")
+        bg_color = "#e0e4ea"
 
-        bars = ax.bar(
-            [f"{v}\n(n={s[v]['n']})" for v in venues],
-            vals,
-            color=[C_HOME, C_AWAY],
-            width=0.45, zorder=3,
-        )
-        ax.set_ylabel("Win Rate (%)", fontsize=9)
-        ax.set_ylim(0, max(vals + [1]) * 1.35)
-        _style_ax(ax)
-        _bar_labels(ax, bars)
-        fig.tight_layout(pad=0.8)
+        for ax, val, color, label in zip(axes, vals, [C_HOME, C_AWAY], venues):
+            ax.set_aspect("equal")
+            ax.axis("off")
+
+            bg = Wedge((0, 0), 1.0, 0, 180, width=0.22, facecolor=bg_color, edgecolor="none", lw=0)
+            ax.add_patch(bg)
+
+            frac = max(0.0, min(float(val) / 100.0 if val is not None else 0.0, 1.0))
+            if frac > 0:
+                start_ang = 180 - 180 * frac
+                fg = Wedge((0, 0), 1.0, start_ang, 180, width=0.22, facecolor=color, edgecolor="none", lw=0)
+                ax.add_patch(fg)
+
+            ax.text(0, -0.08, f"{(val or 0):.1f}%", ha="center", va="center", fontsize=14, fontweight="700", color=color)
+            ax.text(0, -0.32, label, ha="center", va="center", fontsize=10, color="#6b7280")
+
+            ax.set_xlim(-1.15, 1.15)
+            ax.set_ylim(-0.6, 1.05)
+
+        fig.tight_layout(pad=0.6)
         return fig
 
     @output
@@ -1049,7 +1064,7 @@ def server(input, output, session):
                 home_avg.append(sub[sub["venue"] == "Home"]["goals_for"].mean())
                 away_avg.append(sub[sub["venue"] == "Away"]["goals_for"].mean())
 
-        x_labels = [f"{p}\n(n={ns[i]})" for i, p in enumerate(periods)]
+        x_labels = [p for i, p in enumerate(periods)]
 
         fig, ax = plt.subplots(figsize=(9, 3))
         fig.patch.set_facecolor("#fff")
