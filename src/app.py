@@ -274,7 +274,18 @@ def filter_matches_ibis(team: str, season: str, result: str):
     
     # Filter by season
     if season:
-        expr = expr.filter(expr.Season == season)
+        # Normalize season formats: accept '2024-25' or '2024/25' or with en-dash
+        try:
+            s = str(season).strip()
+            # replace en-dash and em-dash with hyphen
+            s = s.replace('–', '-').replace('—', '-')
+            # if hyphenated form like '2024-25', convert to '2024/25'
+            if '-' in s and '/' not in s:
+                s = s.replace('-', '/')
+            season_norm = s
+        except Exception:
+            season_norm = season
+        expr = expr.filter(expr.Season == season_norm)
     
     # Filter by result
     if result and result != "All":
