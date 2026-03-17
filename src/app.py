@@ -343,6 +343,7 @@ html, body, .container-fluid {
 /* Body and sidebar */
 .body-row { display:flex; gap:14px; align-items:stretch; }
 .sidebar { width:260px; flex-shrink:0; background:#fff; border-radius:10px; border:1px solid #e0e4ea; box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:16px; display:flex; flex-direction:column; gap:12px; align-self:stretch; }
+.sidebar.ai-sidebar { width:420px; }
 .sidebar-title{ font-size:14px; font-weight:700; color:#111827; }
 .sidebar label{ font-size:12px; font-weight:600; color:#374151; }
 .sidebar .form-select{ font-size:12px; border-radius:6px; border:1px solid #d1d5db; }
