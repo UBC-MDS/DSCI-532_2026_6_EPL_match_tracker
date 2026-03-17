@@ -1,3 +1,89 @@
+## [0.4.0] - 2026-03-17
+
+### Added
+
+- **Lazy Loading with Parquet + DuckDB**: Migrated data loading from CSV to parquet format stored in `data/processed/`. All filtering now happens at the database level using ibis + DuckDB, ensuring only matching rows are loaded into memory. This enables the app to scale efficiently for large datasets.
+- **Enhanced Error Handling**: Improved handling of empty DataFrames across all reactive calculations and output renders. Dashboard, charts, and tables now gracefully display empty states instead of throwing KeyError exceptions.
+- **Dependencies**: Added `ibis-framework[duckdb]`, `pyarrow`, and `pyarrow-hotfix` to support lazy loading and parquet operations.
+- **Tests**: Added pytest unit tests for `get_team_matches` and `assign_period` helper functions in `tests/test_utils.py`. Added 4 Playwright browser tests covering dashboard load, team filter, result filter chip, and reset button behavior in `tests/test_app.py`.
+- **Refactored helpers**: Extracted `get_team_matches` and `assign_period` from `src/app.py` into `src/utils.py` to enable unit testing and improve code organization.
+ - **Query interaction log**: Added logging of user AI queries and responses. Logs are written to `logs/querychat_log.csv` as the local fallback and when credentials are provided appended to a Google Sheet (configured via `GSPREAD_SHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` / `GSPREAD_CREDENTIALS_PATH`). 
+ - **`src/app.py` logging improvements**: Implemented `_init_gspread()` to safely parse service-account JSON or credential file, added explicit startup status prints, made Google Sheets optional (graceful CSV fallback), added `log_interaction()` CSV fallback behavior, and improved `read_recent_logs()` to prefer Sheets when available. Added lightweight duplicate-avoidance state and surfaced tracebacks on init failures.
+ - **Notebook: Query interaction analysis**: added `notebooks/querychat_log.ipynb` Describing why log is needed and demonstration on how it would be used it for our goals, data pipeline sketch and examples.
+ - **Dependencies / environment**: Updated `environment.yml` to include pip-installed packages required for AI and Sheets integration (`querychat`, `anthropic`, `python-dotenv`, `gspread`, and `google-auth`). Ensured `requirements.txt` lists `gspread` and `google-auth` for pip-based installs.
+- **Test dependencies**: Added `pytest`, `pytest-playwright`, and `playwright` to `requirements.txt` and `environment.yml`.
+
+### Changed
+
+- **Data Loading**: Replaced `pd.read_csv("data/raw/epl_final.csv")` with `ibis.duckdb.connect().read_parquet("data/processed/epl_final.parquet")` for lazy evaluation.
+- **Filtering Logic**: Introduced `filter_matches_ibis()` function to build filter expressions at the database level before execution. All team, season, and result filters now apply via ibis before rows enter pandas DataFrames.
+- **`matches_filtered()` Reactive Calc**: Updated to use lazy ibis filtering instead of pandas slicing. Filters are now applied before `.execute()` is called.
+- **Helper Functions**: Updated `get_team_matches()`, `summary_home_away()`, `summary_period()`, and `out_matches_table()` to handle empty DataFrames gracefully.
+- **Chatbot Appearance**: Updated the AI chatbot interface to use a fixed height container with internal scrolling. This prevents the chat panel from expanding as messages are added and improves overall layout stability and usability.
+- **Updated Dependencies**: Modified `requirements.txt` and created `environment.yaml` for both pip and conda users.
+- **README**: Updated with instructions to run unit tests and Playwright tests locally.
+- **Final UI & Chart polish:** Adjusted AI Explorer sidebar width to 400px, reduced font sizes for the AI chat and table/chart cards, removed two exploratory AI charts from the AI Explorer view, and removed sample-size annotations `(n=...)` from dashboard x-axis labels for cleaner presentation.
+- **Match Results chart (AI Explorer):** Reworked layout and plotting so the bar chart fills its card, increased margins and tweaked subplot positioning to avoid clipped axes and labels; bar color standardized to `C_HOME` (`#472A4B`).
+- **Win Rate visualization:** Replaced the Home/Away win-rate bar chart with two semicircular gauges that preserve the original `C_HOME`/`C_AWAY` colors, fill from the left, and display percentages with one decimal place.
+- **Season normalization:** Normalized season formats (e.g., `2024-25` → `2024/25`) so AI-derived filters match dataset `Season` values and return correct results.
+
+### Fixed
+
+- **KeyError on Empty Data**: Fixed crashes when no matches are found for selected filters (e.g., team/season combo with no data). All dashboard components now render safely with empty states.
+- **Column Missing Error**: Ensured derived columns (`venue`, `goals_for`, `goals_against`, `win`) are present even in empty DataFrames.
+- **Season Dropdown Filtered by Team**: The season selector now only shows seasons where the selected team has data, preventing users from selecting a season with no matches for that team. A `TEAM_SEASONS` lookup is computed at startup, and a reactive observer (`_update_seasons_for_team`) updates the dropdown whenever the team changes. The default and reset state correctly show Arsenal with its latest available season.
+- **AI Explorer empty state (#74)**: Charts now display a descriptive "No matches found" message instead of a blank "No data" label. A yellow warning banner is shown above the charts when an AI query returns no results, guiding users to refine their query.
+- **Feedback prioritization issue link:** #69
+
+### Known Issues
+
+- **Matplotlib charts are static**: Charts are rendered as static PNG images. Interactive exploration (hover tooltips, zoom, pan) is not yet available. Consider migrating to Plotly or Altair for future milestones.
+- **Fixed card heights**: Some dashboard components use fixed pixel heights (320px) which may require responsive adjustments for very small viewports (< 600px width).
+- **Google Sheets is optional**: If Google Sheets credentials are misconfigured, logs silently fall back to CSV. Users should verify `logs/querychat_log.csv` exists to confirm logging is working.
+
+### Release Highlight: Persistent AI Query Logging with Google Sheets Integration
+
+This release implements **Option B: Persistent LLM Logging**, enabling teams to capture and analyze AI-powered query patterns from the dashboard. Each query and response is logged with a timestamp, stored both locally (as CSV fallback) and remotely (Google Sheets when credentials are provided). This creates a data trail for understanding user behavior, improving the AI prompts, and auditing AI decisions.
+
+- **Option chosen:** B (Persistent LLM Logging)
+- **PR:** #90
+- **Why this option over the others:** 
+  - Logging provides immediate operational insights: which queries work well, which fail, and how users interact with the AI feature. This data helps us iterate on the AI system (Option A would only customize behavior, not provide feedback). RAG (Option C) and component click events (Option D) are longer-term features that benefit from logging data first. We prioritized logging as a foundation for future AI improvements.
+- **Feature prioritization issue link:** #88
+
+### Collaboration
+
+- **CONTRIBUTING.md:** Updated with M3 retrospective (communication gaps, last-minute changes led to poor review practices) and M4 norms (early planning, distributed work, clear PR scoping). See PR #XX for full details.
+- **M3 retrospective:** In M3, collaboration suffered from unclear task ownership and last-minute bursts. Some PRs were large and hard to review, and feedback integration was rushed. M4 focuses on spreading work evenly across team members and reviewing design docs before implementation.
+- **M4:** This milestone emphasized design-before-code (specs updated before implementation), distributed work (each team member tackled feedback items), and smaller, focused PRs. We introduced structured logging from the start rather than bolting it on last-minute.
+
+### Reflection
+
+**What the dashboard does well:**
+- The dashboard provides a clear, intuitive interface for exploring EPL performance across multiple dimensions (team, season, venue, period).
+- Lazy loading with Ibis/DuckDB scales gracefully; filters apply at the database level before rows enter memory.
+- The AI Explorer tab (using QueryChat) makes complex queries conversational and accessible.
+- Comprehensive logging (both local and cloud-based) creates an audit trail for AI interactions.
+
+**Current limitations:**
+- Matplotlib charts are static; no interactive brushing, zoom, or hover tooltips. For a data-heavy dashboard, interactive charts (Plotly, Altair) would significantly improve exploratory analysis.
+- The dashboard is team-sport focused and EPL-specific; generalizing to other sports or leagues would require data schema changes.
+- The AI feature uses a fixed prompt; customization per team or per query type is not yet supported.
+
+**Intentional deviations from DSCI 531 best practices:**
+- We use fixed card heights (320px) for consistent layout, sacrificing responsive perfection for visual stability. Given the target audience (analysts on fixed workstations), this is acceptable.
+- Matplotlib was retained over Plotly/Altair to keep dependencies minimal and deployment fast. The trade-off is static visualizations; in a future sprint, moving to Plotly would unlock interactivity without major refactoring.
+
+**Trade-offs in feedback prioritization:**
+- We categorized feedback into critical (broken functionality, major UX issues) and non-critical (polish, nice-to-haves). The critical items (import errors, logging side effects in UI) were fixed across PRs #89-#90. Non-critical items (interactive charts, responsive sizing) were deferred to M5 to avoid scope creep. Each team member resolved at least one feedback item, distributing the work fairly.
+
+**Most useful materials this milestone:**
+- The Shiny reactive model (especially separating `@output` from `@reactive.effect`) was crucial for fixing the logging architecture. Lab discussions about side effects in UI functions clarified the pattern.
+- The feedback prioritization workflow (creating a single issue to triage all feedback) made it easy to discuss trade-offs as a team and explain decisions in release notes.
+- The specification documents (`reports/m2_spec.md`, design decisions in m4_spec.md) helped us think through changes before implementing them, reducing rework and review cycles.
+
+
+---
 ## [0.3.0] - 2026-03-07
 
 ### Added
