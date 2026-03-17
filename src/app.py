@@ -1256,7 +1256,21 @@ def server(input, output, session):
         """Download AI filtered data as CSV."""
         yield qc_vals.df().to_csv(index=False)
 
-
+    @output
+    @render.data_frame
+    def out_logs():
+        """Render recent AI query logs."""
+        logs_df = read_recent_logs(n=50)
+        if logs_df.empty:
+            return render.DataGrid(
+                pd.DataFrame({
+                    "Timestamp": ["No logs yet"],
+                    "Query": ["—"],
+                    "Response": ["Run some AI queries to see them here"]
+                }),
+                width="100%"
+            )
+        return render.DataGrid(logs_df, width="100%")
 
 # APP INITIALIZATION
 app = App(app_ui, server)
